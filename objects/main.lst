@@ -1,0 +1,3246 @@
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2020.02.16 - 22:03:03]
+
+src/main.asm
+Errors: 2
+
+       1   00:0000                              output "main.bin"
+       2   00:8200                      
+       3   00:8200  FE                      db   #fe               ; ID archivo binario, siempre hay que poner el mismo 0FEh
+       4   00:8201  00 82                   dw   INICIO             ; dirección de inicio
+       5   00:8203  66 9E                   dw   FINAL - 1          ; dirección final
+       6   00:8205  00 82                   dw   INICIO               ; dircción del programa de ejecución (para cuando pongas r en bload"nombre_programa", r)
+       7   00:8207                      
+       8   00:8207                          org 33280               ; org se utiliza para decirle al z80 en que posición de memoria empieza nuestro programa (es la 33280 en decimal), en hezadecimal sería #8200
+       9   00:8200                      
+      10   00:8200                      
+      11   00:8200                      
+      12   00:8200                      INICIO:
+      13   00:8200                          ;***********************musica****************/
+      14   00:8200  F3                      di	
+      15   00:8201  21 26 9C            	ld		hl,SONG-99		; hl vale la direccion donde se encuentra la cancion - 99
+      16   00:8204  CD 9A 96            	call	PT3_INIT			; Inicia el reproductor de PT3
+      17   00:8207  FB                  	ei
+      18   00:8208                          ;***************Fin de música****************/
+      19   00:8208  CD B3 83                call screen2x16
+      20   00:820B  CD 8F 82                call cargar_tiles_colores_y_screen1 ;cargamos la pantalla con la foto de presentación
+      21   00:820E  CD 9F 00                call CHGET ;esperamos a que se pulse un tecla, cuando se pulse cambiará la pantalla a screen screen2 (la 1)
+      22   00:8211  CD B4 82                call cargar_tiles__colores_screen2
+      23   00:8214  CD EB 82                call cagar_coche_y_enemigos_screen2
+      24   00:8217  CD CD 82                call cargar_map_screen2
+      25   00:821A  CD 70 83                call cargar_sprites
+      26   00:821D                      
+      27   00:821D  CD 21 82                call .bucle
+      28   00:8220  C9                      ret
+      29   00:8221                      .bucle:
+      30   00:8221                          ;***************Ir reproduciendo bloques de música**************/
+      31   00:8221  76                      halt						;sincronizacion
+      32   00:8222  F3                  	di
+      33   00:8223  CD DF 9B            	call	PT3_ROUT			;envia datos a al PSG
+      34   00:8226  CD E7 9A            	call	PT3_PLAY			;prepara el siguiente trocito de cancion que sera enviada mas tarde al PSG
+      35   00:8229  FB                  	ei
+      36   00:822A                      	;***************Fin de ir reproduciendo bloques de música*******/
+      37   00:822A                      
+      38   00:822A                          ;halt ;espera a la interrupción VBlank del VDP y sincroniza
+      39   00:822A  CD 4A 82                call chekear_teclado
+      40   00:822D                          ;call analizar_colisiones
+      41   00:822D  CD 48 86                call actualiza_atributos_de_coche_sprite
+      42   00:8230  CD C7 88                call actualiza_atributos_de_enemigo_sprite
+      43   00:8233                          ;call actualiza_atributos_de_enemigo2_sprite
+      44   00:8233  CD BB 8A                call actualiza_atributos_de_contenedor_sprite
+      45   00:8236  CD F0 88                call actualiza_posicion_enemigo
+      46   00:8239  CD D8 8A                call incrementa_posicion_x_contedor
+      47   00:823C                          ;call actualiza_atributos_de_numeros_sprite
+      48   00:823C  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+      49   00:823F  CD 96 88                call volcar_sprite_enemigo_atributos_en_VRAM
+      50   00:8242                          ;call volcar_sprite_enemigo2_atributos_en_VRAM
+      51   00:8242  CD 94 8A                call volcar_sprite_contenedor_atributos_en_VRAM
+      52   00:8245                          ;call volcar_sprite_numeros_atributos_en_VRAM
+      53   00:8245                          ;call inteligencia_enemigo
+      54   00:8245  CD 50 82                call analizar_colisiones
+      55   00:8248  18 D7                   jr .bucle
+      56   00:824A                        
+      57   00:824A                      chekear_teclado:
+      58   00:824A  F3                      di
+      59   00:824B  CD 79 85                call cursores
+      60   00:824E  FB                      ei
+      61   00:824F  C9                      ret
+      62   00:8250                      
+      63   00:8250                      analizar_colisiones:
+      64   00:8250  3A E7 F3                ld a,(STATFL)
+      65   00:8253  CB 6F                   bit 5,a ; mira el valor del bit 5 almacenado en el registro a y que antes hemos copiado con RDVDP es el de la colision del reg. de lectura del VDP
+      66   00:8255                                  ;queda a 1 si está activo
+      67   00:8255  C4 59 82                call nz,termina_partida ; si hay una colision termina partida
+      68   00:8258  C9                      ret
+      69   00:8259                      termina_partida:
+      70   00:8259  CD 65 86                call poner_coche_punto_inicial
+      71   00:825C  CD E4 88                call poner_enemigo_punto_inicial
+      72   00:825F  CD 6C 82                call poner_pantalla_inicial
+      73   00:8262  C9                      ret
+      74   00:8263                      
+      75   00:8263                      muestra_colision:
+      76   00:8263  3A A0 8B                ld a,(numeros_posicion_x)
+      77   00:8266  C6 14                   add 20
+      78   00:8268  32 A0 8B                ld (numeros_posicion_x),a
+      79   00:826B  C9                      ret
+      80   00:826C                      
+      81   00:826C                      poner_pantalla_inicial:
+      82   00:826C                          ;ld a,2
+      83   00:826C                          ;ld (screen_actual),a
+      84   00:826C                          ;call cargar_map_screen1
+      85   00:826C  C9                      ret
+      86   00:826D                      incrementar_pantalla:
+      87   00:826D  3A 7C 93                ld a,(screen_actual)
+      88   00:8270  C6 01                   add 1
+      89   00:8272  32 7C 93                ld (screen_actual),a
+src/main.asm(90) : Illegal operand
+      90   00:8275                          cp 1,termina_partida
+src/main.asm(91) : Illegal operand
+      91   00:8275                          jp z,
+      92   00:8275  FE 02                   cp 2
+      93   00:8277  CA CD 82                jp z, cargar_map_screen2
+      94   00:827A  FE 03                   cp 3
+      95   00:827C  CA 0A 83                jp z, cargar_screen3
+      96   00:827F  FE 04                   cp 4
+      97   00:8281  CA 2C 83                jp z, cargar_screen4
+      98   00:8284  FE 05                   cp 5
+      99   00:8286  CA 4E 83                jp z, cargar_screen5
+     100   00:8289  3E 02                   ld a,2
+     101   00:828B  32 7C 93                ld (screen_actual),a
+     102   00:828E  C9                      ret
+     103   00:828F                      
+     104   00:828F                      
+     105   00:828F                      
+     106   00:828F                      ;Es la pantalla con la foto
+     107   00:828F                      cargar_tiles_colores_y_screen1:
+     108   00:828F                      ;Para comprender como se distrivuye la memoria del VDP ir a: https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png
+     109   00:828F                      ;-----------------------------Tileset -------------------------------------------
+     110   00:828F                          ;screen1 es el splash_screen o pantalla incial con la foto de presentación
+     111   00:828F  21 A3 8B                ld hl, tiles_screen1 ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+     112   00:8292  11 00 00                ld de, #0000 ; la rutina necesita haber cargado previamente con de la dirección de inicio de la VRAM          
+     113   00:8295  01 00 18                ld bc, #1800; son los 3 bancos de #800
+     114   00:8298                          ;call  LDIRVM ; Mira arriba, pone la explicación
+     115   00:8298  CD D2 83                call depack_VRAM   
+     116   00:829B                          ;call unpack 
+     117   00:829B                      ;--------------------------------Colores--------------------------------------
+     118   00:829B  21 51 8F                ld hl, color_screen1
+     119   00:829E  11 00 20                ld de, #2000 
+     120   00:82A1  01 00 18                ld bc, #1800 ;son los 3 bancos de #800
+     121   00:82A4                          ;call  LDIRVM
+     122   00:82A4  CD D2 83                call depack_VRAM
+     123   00:82A7                          ;call unpack
+     124   00:82A7                      ;------------------------------Mapa o tabla de nombres-------------------------------
+     125   00:82A7  21 E4 8F                ld hl, map_screen1
+     126   00:82AA  11 00 18                ld de, #1800 
+     127   00:82AD  01 00 03                ld bc, #300
+     128   00:82B0                          ;call  LDIRVM
+     129   00:82B0  CD D2 83                call depack_VRAM
+     130   00:82B3                          ;call unpack   
+     131   00:82B3  C9                      ret
+     132   00:82B4                      ;*************************Final de cargar_pantalla_screen1 la de la foto**********************
+     133   00:82B4                      
+     134   00:82B4                      
+     135   00:82B4                      
+     136   00:82B4                      
+     137   00:82B4                      
+     138   00:82B4                      
+     139   00:82B4                      
+     140   00:82B4                      
+     141   00:82B4                      
+     142   00:82B4                      
+     143   00:82B4                      
+     144   00:82B4                      
+     145   00:82B4                      
+     146   00:82B4                      
+     147   00:82B4                      
+     148   00:82B4                      
+     149   00:82B4                      ;*********************Comienza la 1 pantalla del juego****************************
+     150   00:82B4                      ;Esta es la pantalla donde el coche empieza abajo a la izquierda y pone comisaría
+     151   00:82B4                      cargar_tiles__colores_screen2:
+     152   00:82B4                      ;-----------------------------Tileset -------------------------------------------
+     153   00:82B4  21 0C 91                ld hl, tiles_screen2 ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+     154   00:82B7  11 00 00                ld de, #0000 ; la rutina necesita haber cargado previamente con de la dirección de inicio de la VRAM          
+     155   00:82BA  01 00 18                ld bc, #1800; son los 3 bancos de #800
+     156   00:82BD                          ;call  LDIRVM ; Mira arriba, pone la explicación
+     157   00:82BD  CD D2 83                call depack_VRAM   
+     158   00:82C0                          ;call unpack 
+     159   00:82C0                      ;--------------------------------Colores--------------------------------------
+     160   00:82C0  21 94 91                ld hl, color_screen2 
+     161   00:82C3  11 00 20                ld de, #2000 
+     162   00:82C6  01 00 18                ld bc, #1800 ;son los 3 bancos de #800
+     163   00:82C9                          ;call  LDIRVM
+     164   00:82C9  CD D2 83                call depack_VRAM
+     165   00:82CC                          ;call unpack
+     166   00:82CC                      ;------------------------------Mapa o tabla de nombres-------------------------------
+     167   00:82CC  C9                      ret
+     168   00:82CD                      
+     169   00:82CD                      cargar_map_screen2:
+     170   00:82CD  3E 02                   ld a,2
+     171   00:82CF  32 7C 93                ld (screen_actual),a
+     172   00:82D2                          ;*****Posición coche al final de la pamtalla para desarrollo****
+     173   00:82D2                          ;ld a,205 ;developer 
+     174   00:82D2                          ;ld (posicion_x),a
+     175   00:82D2                          ;ld a,20 ;developer
+     176   00:82D2                          ;ld (posicion_y),a
+     177   00:82D2                          ;***************************************************************
+     178   00:82D2                      
+     179   00:82D2  21 D7 91                ld hl, map_screen2
+     180   00:82D5  11 7D 93                ld de,buffer_de_colsiones ;call unpack pasará todo el mapa a esta dirección
+     181   00:82D8  01 00 03                ld bc, #300
+     182   00:82DB                          ;call  LDIRVM
+     183   00:82DB                          ;call depack_VRAM
+     184   00:82DB  CD B2 84                call unpack
+     185   00:82DE                          ;call unpack
+     186   00:82DE  21 7D 93                ld hl, buffer_de_colsiones ;recupramos nuestro mapa y lo volcamos al VRAM
+     187   00:82E1  11 00 18                ld de, #1800 
+     188   00:82E4  01 00 03                ld bc, 768
+     189   00:82E7  CD 5C 00                call  LDIRVM 
+     190   00:82EA                      ;*************************Final de cargar_pantalla_splash_screen**********************
+     191   00:82EA  C9                      ret
+     192   00:82EB                      
+     193   00:82EB                      
+     194   00:82EB                      cagar_coche_y_enemigos_screen2:
+     195   00:82EB                          ;*******coche*******************************/
+     196   00:82EB  CD 33 86                call inicializacion_variables_coche_sprite
+     197   00:82EE  CD 48 86                call actualiza_atributos_de_coche_sprite
+     198   00:82F1  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+     199   00:82F4                          ;**********Fin de coche*********************/
+     200   00:82F4                      
+     201   00:82F4                          ;************enemigo*************************/
+     202   00:82F4  CD A3 88                call inicializacion_variables_enemeigo_sprite
+     203   00:82F7  CD C7 88                call actualiza_atributos_de_enemigo_sprite
+     204   00:82FA  CD 96 88                call volcar_sprite_enemigo_atributos_en_VRAM
+     205   00:82FD  CD 1D 89                call seleccion_ruta_dos_enemigo
+     206   00:8300                          ;*************Fin de enemigo******************/
+     207   00:8300                      
+     208   00:8300                          ;************enemigo 2*************************/
+     209   00:8300                          ;call inicializacion_variables_enemeigo2_sprite
+     210   00:8300                          ;call actualiza_atributos_de_enemigo2_sprite
+     211   00:8300                          ;call volcar_sprite_enemigo2_atributos_en_VRAM
+     212   00:8300                          ;call seleccion_ruta_tres_enemigo2
+     213   00:8300                          ;*************Fin de enemigo******************/
+     214   00:8300                      
+     215   00:8300                          ;******************contenedor****************/
+     216   00:8300  CD A1 8A                call inicializacion_variables_contendor_sprite
+     217   00:8303  CD BB 8A                call actualiza_atributos_de_contenedor_sprite
+     218   00:8306  CD 94 8A                call volcar_sprite_contenedor_atributos_en_VRAM
+     219   00:8309                          ;*************Fin de contendor******************/
+     220   00:8309                      
+     221   00:8309  C9                      ret
+     222   00:830A                      ;***********Fin de la 1 pantalla del juego************************
+     223   00:830A                      
+     224   00:830A                      
+     225   00:830A                      
+     226   00:830A                      
+     227   00:830A                      
+     228   00:830A                      
+     229   00:830A                      
+     230   00:830A                      
+     231   00:830A                      
+     232   00:830A                      
+     233   00:830A                      
+     234   00:830A                      
+     235   00:830A                      
+     236   00:830A                      cargar_screen3:
+     237   00:830A  CD 7D 86                call poner_coche_en_posicion_screen3
+     238   00:830D  CD 16 8B                call seleccion_ruta_dos_contenedor
+     239   00:8310  CD 3D 89                call seleccion_ruta_cuatro_enemigo
+     240   00:8313                      
+     241   00:8313                          ;*****Posición coche al final de la pamtalla para desarrollo****
+     242   00:8313                          ;ld a,200 ;developer 
+     243   00:8313                          ;ld (posicion_x),a
+     244   00:8313                          ;ld a,75 ;developer
+     245   00:8313                          ;ld (posicion_y),a
+     246   00:8313                          ;***************************************************************
+     247   00:8313                      
+     248   00:8313                      
+     249   00:8313                      
+     250   00:8313  21 6B 92                ld hl, map_screen3
+     251   00:8316  11 7D 93                ld de,buffer_de_colsiones ;call unpack pasará todo el mapa a esta dirección
+     252   00:8319  01 00 03                ld bc, #300
+     253   00:831C                          ;call  LDIRVM
+     254   00:831C                          ;call depack_VRAM
+     255   00:831C  CD B2 84                call unpack
+     256   00:831F                          ;call unpack
+     257   00:831F  21 7D 93                ld hl, buffer_de_colsiones ;recupramos nuestro mapa y lo volcamos al VRAM
+     258   00:8322  11 00 18                ld de, #1800 
+     259   00:8325  01 00 03                ld bc, 768
+     260   00:8328  CD 5C 00                call  LDIRVM 
+     261   00:832B                      
+     262   00:832B  C9                      ret
+     263   00:832C                      
+     264   00:832C                      
+     265   00:832C                      
+     266   00:832C                      
+     267   00:832C                      
+     268   00:832C                      
+     269   00:832C                      ;En esta pantalla le he puesto un 4 en el centro
+     270   00:832C                      cargar_screen4:
+     271   00:832C  CD 8E 86                call poner_coche_en_posicion_screen4
+     272   00:832F  CD 21 8B                call seleccion_ruta_tres_contenedor
+     273   00:8332  CD 3D 89                call seleccion_ruta_cuatro_enemigo
+     274   00:8335  21 BB 92                ld hl, map_screen4
+     275   00:8338  11 7D 93                ld de,buffer_de_colsiones ;call unpack pasará todo el mapa a esta dirección
+     276   00:833B  01 00 03                ld bc, #300
+     277   00:833E                          ;call  LDIRVM
+     278   00:833E                          ;call depack_VRAM
+     279   00:833E  CD B2 84                call unpack
+     280   00:8341                          ;call unpack
+     281   00:8341  21 7D 93                ld hl, buffer_de_colsiones ;recupramos nuestro mapa y lo volcamos al VRAM
+     282   00:8344  11 00 18                ld de, #1800 
+     283   00:8347  01 00 03                ld bc, 768
+     284   00:834A  CD 5C 00                call  LDIRVM 
+     285   00:834D                      
+     286   00:834D  C9                      ret
+     287   00:834E                      cargar_screen5:
+     288   00:834E  CD 9F 86                call poner_coche_en_posicion_screen5
+     289   00:8351  CD 2C 8B                call seleccion_ruta_cuatro_contenedor
+     290   00:8354  CD 1D 89                call seleccion_ruta_dos_enemigo
+     291   00:8357  21 08 93                ld hl, map_screen5
+     292   00:835A  11 7D 93                ld de,buffer_de_colsiones ;call unpack pasará todo el mapa a esta dirección
+     293   00:835D  01 00 03                ld bc, #300
+     294   00:8360                          ;call  LDIRVM
+     295   00:8360                          ;call depack_VRAM
+     296   00:8360  CD B2 84                call unpack
+     297   00:8363                          ;call unpack
+     298   00:8363  21 7D 93                ld hl, buffer_de_colsiones ;recupramos nuestro mapa y lo volcamos al VRAM
+     299   00:8366  11 00 18                ld de, #1800 
+     300   00:8369  01 00 03                ld bc, 768
+     301   00:836C  CD 5C 00                call  LDIRVM 
+     302   00:836F                      
+     303   00:836F  C9                      ret
+     304   00:8370                      
+     305   00:8370                      cargar_sprites:
+     306   00:8370                          ;coche son 4 spites=4*32=128 bytes
+     307   00:8370  21 AF 85                ld hl, sprites_coche
+     308   00:8373  11 00 38                ld de, 14336; #3800
+     309   00:8376  01 80 00                ld bc, 32*4 
+     310   00:8379  CD 5C 00                call  LDIRVM 
+     311   00:837C                          ;Enemigo 8 sprites
+     312   00:837C  21 92 87                ld hl, sprites_enemigo
+     313   00:837F  11 80 38                ld de, 14336+128; #3800
+     314   00:8382  01 00 01                ld bc, 32*8 ; los enemigos tambien son 32 bytes de cada sprite por 4 sprites
+     315   00:8385  CD 5C 00                call  LDIRVM 
+     316   00:8388                          ;Enemigo2 8 sprites
+     317   00:8388                          ;ld hl, sprites_enemigo2
+     318   00:8388                          ;ld de, 14336+128+256; #3800
+     319   00:8388                          ;ld bc, 32*8 ; los enemigos tambien son 32 bytes de cada sprite por 4 sprites
+     320   00:8388                          ;call  LDIRVM 
+     321   00:8388                          ;contendor son 2 sprites
+     322   00:8388  21 50 8A                ld hl, sprites_contedor
+     323   00:838B  11 80 39                ld de, 14336+128+256; #3800
+     324   00:838E  01 40 00                ld bc, 64 ; los sprites del numero es 1
+     325   00:8391  CD 5C 00                call  LDIRVM 
+     326   00:8394                          ;Numeros
+     327   00:8394  21 3C 8B                ld hl, sprites_numeros
+     328   00:8397  11 C0 39                ld de, 14336+128+256+64; #3800
+     329   00:839A  01 20 00                ld bc, 32 ; los sprites del numero es 1
+     330   00:839D  CD 5C 00                call  LDIRVM 
+     331   00:83A0                      
+     332   00:83A0                      
+     333   00:83A0  C9                      ret
+     334   00:83A1                      
+     335   00:83A1                      
+     336   00:83A1                      salir_menu_principal:
+     337   00:83A1                          
+     338   00:83A1  C9                      ret
+     339   00:83A2                      
+     340   00:83A2                      
+     341   00:83A2                      
+     342   00:83A2                      
+     343   00:83A2                      
+     344   00:83A2                      
+     345   00:83A2                      
+     346   00:83A2                      
+     347   00:83A2                      
+     348   00:83A2                      
+     349   00:83A2                      
+     350   00:83A2                      
+     351   00:83A2                      
+     352   00:83A2                      
+     353   00:83A2                      
+     354   00:83A2                      
+     355   00:83A2                      
+     356   00:83A2                      
+     357   00:83A2                      
+     358   00:83A2                         
+     359   00:83A2                      inicializar_modo_pantalla:
+     360   00:83A2                          ;Cambiamos el modo de pantalla
+     361   00:83A2  3E 02                   ld  a,2     ; La rutina CHGMOD nos obliga a poner en el registro a el modo de pantalla que queremos 
+     362   00:83A4  CD 5F 00                call CHGMOD ; Mira arriba, pone la explicación, pone screen 2 y sprite de 16 sin apliar
+     363   00:83A7                          
+     364   00:83A7  3A E0 F3                ld a,(RG1SAV) ;en esta dirección está el valor del el 1 registro de soo escritura del VDP, en el se controla el tamaño de los sprites
+     365   00:83AA  F6 02                   or 00000010b ;vamos a obligarle a que trabaje con los sprites de 16 pixeles
+     366   00:83AC                          ;or 00000011b
+     367   00:83AC                          ;and 11111110b ; lo he comentado porque no quiero grande
+     368   00:83AC  47                      ld b,a 
+     369   00:83AD  0E 01                   ld c,1
+     370   00:83AF  CD 47 00                call WRTVDP ;rutina que es escribe el valor en el reistro de solo escritura indicado previamente
+     371   00:83B2  C9                      ret
+     372   00:83B3                      
+     373   00:83B3                      screen2x16:
+     374   00:83B3                          ; 	pone los colores de tinta , fondo y borde
+     375   00:83B3  21 E9 F3            	ld      hl,FORCLR
+     376   00:83B6  36 0F               	ld      [hl],15; le poneos el 15 en tinta que es el blanco
+     377   00:83B8  23                  	inc     hl
+     378   00:83B9  36 01               	ld      [hl],1 ; le metemos 1 en fondo que es el negro
+     379   00:83BB  23                  	inc		hl
+     380   00:83BC  36 01               	ld		[hl],1 ;en borde también el negro
+     381   00:83BE  CD 62 00            	call    CHGCLR
+     382   00:83C1                      
+     383   00:83C1                      ;click off	
+     384   00:83C1  AF                  	xor	a		
+     385   00:83C2  32 DB F3            	ld	[CLIKSW],a
+     386   00:83C5                      		
+     387   00:83C5                      ;- screen 2
+     388   00:83C5  3E 02               	ld a,2
+     389   00:83C7  CD 5F 00            	call CHGMOD;rutina de la bios que cambia el modo de screen
+     390   00:83CA                      
+     391   00:83CA                      	;sprites no ampliados de 16x16
+     392   00:83CA  06 E2               	ld b,0xe2
+     393   00:83CC  0E 01               	ld c,1
+     394   00:83CE  CD 47 00            	call 0x47
+     395   00:83D1                      
+     396   00:83D1  C9                  	ret
+     397   00:83D2                      
+     398   00:83D2                      ;************************************Final de inicializar_modo_pantalla********************
+     399   00:83D2                      
+     400   00:83D2                      ;Este include lleva la rutina de descompresion de los archivos a VRAM
+     401   00:83D2                      ;Hay que meterle previamente en el reg. hl la dirección de la RAM y en DE la VRAM
+     402   00:83D2                      depack_VRAM:
+     403   00:83D2                          include "src/PL_VRAM_Depack.asm"
+       1.  00:83D2                      ;-----------------------------------------------------------
+       2.  00:83D2                      ; Pletter v0.5b VRAM Depacker v1.1 - 16Kb version
+       3.  00:83D2                      ; HL = RAM/ROM source ; DE = VRAM destination
+       4.  00:83D2                      ;-----------------------------------------------------------
+       5.  00:83D2  F3                  	di
+       6.  00:83D3                      
+       7.  00:83D3                      ; VRAM address setup
+       8.  00:83D3  7B                  	ld	a,e
+       9.  00:83D4  D3 99               	out	[099h],a
+      10.  00:83D6  7A                  	ld	a,d
+      11.  00:83D7  F6 40               	or	040h
+      12.  00:83D9  D3 99               	out	[099h],a
+      13.  00:83DB                      
+      14.  00:83DB                      ; Initialization
+      15.  00:83DB  7E                  	ld	a,[hl]
+      16.  00:83DC  23                  	inc	hl
+      17.  00:83DD  D9                  	exx
+      18.  00:83DE  11 00 00            	ld	de,0
+      19.  00:83E1  87                  	add	a,a
+      20.  00:83E2  3C                  	inc	a
+      21.  00:83E3  CB 13               	rl	e
+      22.  00:83E5  87                  	add	a,a
+      23.  00:83E6  CB 13               	rl	e
+      24.  00:83E8  87                  	add	a,a
+      25.  00:83E9  CB 13               	rl	e
+      26.  00:83EB  CB 13               	rl	e
+      27.  00:83ED  21 A4 84            	ld	hl,modes
+      28.  00:83F0  19                  	add	hl,de
+      29.  00:83F1  5E                  	ld	e,[hl]
+      30.  00:83F2  DD 6B               	ld	ixl,e
+      31.  00:83F4  23                  	inc	hl
+      32.  00:83F5  5E                  	ld	e,[hl]
+      33.  00:83F6  DD 63               	ld	ixh,e
+      34.  00:83F8  1E 01               	ld	e,1
+      35.  00:83FA  D9                  	exx
+      36.  00:83FB  FD 21 04 84         	ld	iy,loop
+      37.  00:83FF                      
+      38.  00:83FF                      ; Main depack loop
+      39.  00:83FF  0E 98               literal:ld	c,098h
+      40.  00:8401  ED A3               	outi
+      41.  00:8403  13                  	inc	de
+      42.  00:8404  87                  loop:	add	a,a
+      43.  00:8405  CC 98 84              	call	z,getbit
+      44.  00:8408  30 F5               	jr	nc,literal
+      45.  00:840A                      
+      46.  00:840A                      ; Compressed data
+      47.  00:840A  D9                  	exx
+      48.  00:840B  62                  	ld	h,d
+      49.  00:840C  6B                  	ld	l,e
+      50.  00:840D  87                  getlen: add	a,a
+      51.  00:840E  CC 9C 84            	call	z,getbitexx
+      52.  00:8411  30 1D               	jr	nc,lenok
+      53.  00:8413  87                  lus:	add	a,a
+      54.  00:8414  CC 9C 84            	call	z,getbitexx
+      55.  00:8417  ED 6A               	adc	hl,hl
+      56.  00:8419  D8                  	ret	c
+      57.  00:841A  87                  	add	a,a
+      58.  00:841B  CC 9C 84            	call	z,getbitexx
+      59.  00:841E  30 10               	jr	nc,lenok
+      60.  00:8420  87                  	add	a,a
+      61.  00:8421  CC 9C 84            	call	z,getbitexx
+      62.  00:8424  ED 6A               	adc	hl,hl
+      63.  00:8426  DA A2 84            	jp	c,Depack_out
+      64.  00:8429  87                  	add	a,a
+      65.  00:842A  CC 9C 84            	call	z,getbitexx
+      66.  00:842D  DA 13 84            	jp	c,lus
+      67.  00:8430  23                  lenok:  inc	hl
+      68.  00:8431  D9                  	exx
+      69.  00:8432  4E                  	ld	c,[hl]
+      70.  00:8433  23                  	inc	hl
+      71.  00:8434  06 00               	ld	b,0
+      72.  00:8436  CB 79               	bit	7,c
+      73.  00:8438  CA 6B 84            	jp	z,offsok
+      74.  00:843B  DD E9               	jp	ix
+      75.  00:843D                      
+      76.  00:843D  87                  mode7:  add	a,a
+      77.  00:843E  CC 98 84              	call	z,getbit
+      78.  00:8441  CB 10               	rl	b
+      79.  00:8443  87                  mode6:	add	a,a
+      80.  00:8444  CC 98 84              	call	z,getbit
+      81.  00:8447  CB 10               	rl	b
+      82.  00:8449  87                  mode5:  add	a,a
+      83.  00:844A  CC 98 84              	call	z,getbit
+      84.  00:844D  CB 10               	rl	b
+      85.  00:844F  87                  mode4:  add	a,a
+      86.  00:8450  CC 98 84              	call	z,getbit
+      87.  00:8453  CB 10               	rl	b
+      88.  00:8455  87                  mode3:  add	a,a
+      89.  00:8456  CC 98 84              	call	z,getbit
+      90.  00:8459  CB 10               	rl	b
+      91.  00:845B  87                  mode2:	add	a,a
+      92.  00:845C  CC 98 84              	call	z,getbit
+      93.  00:845F  CB 10               	rl	b
+      94.  00:8461  87                  	add	a,a
+      95.  00:8462  CC 98 84              	call	z,getbit
+      96.  00:8465  30 04               	jr	nc,offsok
+      97.  00:8467  B7                  	or	a
+      98.  00:8468  04                  	inc	b
+      99.  00:8469  CB B9               	res	7,c
+     100.  00:846B  03                  offsok: inc	bc
+     101.  00:846C  E5                  	push	hl
+     102.  00:846D  D9                  	exx
+     103.  00:846E  E5                  	push	hl
+     104.  00:846F  D9                  	exx
+     105.  00:8470  6B                  	ld	l,e
+     106.  00:8471  62                  	ld	h,d
+     107.  00:8472  ED 42               	sbc	hl,bc
+     108.  00:8474  C1                  	pop	bc
+     109.  00:8475  F5                  	push	af
+     110.  00:8476  7D                  .loop:	ld	a,l
+     111.  00:8477  D3 99               	out	[099h],a
+     112.  00:8479  7C                  	ld	a,h
+     113.  00:847A  00                  	nop                     ; VDP timing
+     114.  00:847B  D3 99               	out	[099h],a
+     115.  00:847D  00                  	nop                     ; VDP timing
+     116.  00:847E  DB 98               	in	a,[098h]
+     117.  00:8480  08                  	ex	af,af'
+     118.  00:8481  7B                  	ld	a,e
+     119.  00:8482  00                  	nop			; VDP timing
+     120.  00:8483  D3 99               	out	[099h],a
+     121.  00:8485  7A                  	ld	a,d
+     122.  00:8486  F6 40               	or	040h
+     123.  00:8488  D3 99               	out	[099h],a
+     124.  00:848A  08                  	ex	af,af'
+     125.  00:848B  00                  	nop			; VDP timing
+     126.  00:848C  D3 98               	out	[098h],a
+     127.  00:848E  13                  	inc	de
+     128.  00:848F  ED A1               	cpi
+     129.  00:8491  EA 76 84            	jp	pe,.loop
+     130.  00:8494  F1                  	pop	af
+     131.  00:8495  E1                  	pop	hl
+     132.  00:8496  FD E9               	jp	iy
+     133.  00:8498                      
+     134.  00:8498  7E                  getbit: ld	a,[hl]
+     135.  00:8499  23                  	inc	hl
+     136.  00:849A  17                  	rla
+     137.  00:849B  C9                  	ret
+     138.  00:849C                      
+     139.  00:849C                      getbitexx:
+     140.  00:849C  D9                  	exx
+     141.  00:849D  7E                  	ld	a,[hl]
+     142.  00:849E  23                  	inc	hl
+     143.  00:849F  D9                  	exx
+     144.  00:84A0  17                  	rla
+     145.  00:84A1  C9                  	ret
+     146.  00:84A2                      
+     147.  00:84A2                      ; Depacker exit
+     148.  00:84A2                      Depack_out:
+     149.  00:84A2  FB                  	ei
+     150.  00:84A3  C9                  	ret
+     151.  00:84A4                      
+     152.  00:84A4                      modes:
+     153.  00:84A4  6B 84               	dw	offsok
+     154.  00:84A6  5B 84               	dw	mode2
+     155.  00:84A8  55 84               	dw	mode3
+     156.  00:84AA  4F 84               	dw	mode4
+     157.  00:84AC  49 84               	dw	mode5
+     158.  00:84AE  43 84               	dw	mode6
+     159.  00:84B0  3D 84               	dw	mode7
+     404   00:84B2                      
+     405   00:84B2                      include "src/bios.asm"
+       1.  00:84B2                      ;Rutinas bios
+       2.  00:84B2  (00:009F)           CHGET equ #009F    ; Se queda esperando que se pulse una tecla                            
+       3.  00:84B2  (00:005F)           CHGMOD equ #005F   ; Cambia el modo de screen pero previamente necesita que se le asigne el modo en el registro a
+       4.  00:84B2  (00:005C)           LDIRVM equ #005C   ;Tansfiere bloques de la RAM a la VRAM, es la más importante, necesita previamente asignar valor al registro bc con la longitud, dc con la dirección de inicio de la VRAM y hl con la dirección de inicio de la RAM:
+       5.  00:84B2  (00:00D5)           GTSTCK equ #00D5   ;si le pasas al registro a un 0 detectará los cursores,un 1 para el joystick 1 y 2 para el joystick 2
+       6.  00:84B2                                         ;devuelve en a 1 arriba, 2 diagonal arriba derecha,3 derecha, asi hasta 7
+       7.  00:84B2  (00:00D8)           GTTRIG equ #00D8 ;necesita en a el boton a comprobar 0 espacio,1 boton A joystick 1, 3 boton b joystick 1, devuelve en a #00 si ha sido pulsado o #FF si no ha sido pulsado
+       8.  00:84B2  (00:0047)           WRTVDP equ #0047   ; Escribe en los registros del VDP         
+       9.  00:84B2  (00:013E)           RDVDP equ #013E ;   lee  registro de lectura del VDP y lo pone en el registro a
+      10.  00:84B2  (00:0062)           CHGCLR equ #0062; esta rutina necesita que se acceda 1a las constanes de FORCLR,BAKCLR y BDRCLR con un ld,hl(FORCLR) obtenemos su posición
+      11.  00:84B2                      ;Constantes bios
+      12.  00:84B2  (00:F3E9)           FORCLR equ 0xF3E9 ;color de tinta (+1=color del fondo, +1 color del borde)
+      13.  00:84B2  (00:F3DB)           CLIKSW  equ 0xF3DB; para que no se oiga el click que hace al pulsar las teclas
+      14.  00:84B2                      ; registros VDP MSX 1
+      15.  00:84B2  (00:F3DF)           RG0SAV equ	#F3DF ; Registor 0
+      16.  00:84B2  (00:F3E0)           RG1SAV equ	#F3E0	; Registro 1
+      17.  00:84B2  (00:F3E1)           RG2SAV equ	#F3E1	; Registor 2
+      18.  00:84B2  (00:F3E2)           RG3SAV equ	#F3E2	; Registro 3
+      19.  00:84B2  (00:F3E3)           RG4SAV equ	#F3E3	; Registro 4
+      20.  00:84B2  (00:F3E4)           RG5SAV equ	#F3E4	; Registro 5
+      21.  00:84B2  (00:F3E5)           RG6SAV equ	#F3E5	; Registro 6
+      22.  00:84B2  (00:F3E6)           RG7SAV equ	#F3E6	; Registro 7
+      23.  00:84B2  (00:F3E7)           STATFL equ	#F3E7	; Registro de estado VSP MSX 1 
+      24.  00:84B2                      
+      25.  00:84B2                      
+      26.  00:84B2                      ;Constantes del programa
+      27.  00:84B2  (00:000A)           MAXDELAY equ 10
+     406   00:84B2                      
+     407   00:84B2                      ;Este include lleva dentro la rutina depack para descomprimir archivos en ram
+     408   00:84B2                      ;la rutina unpack necesita que le metas previamente en el reg. hl la dirección de lso datos que uieres descomprimir y en de la direccion de la RAM
+     409   00:84B2                      include "src/unpack.asm"
+       1.  00:84B2                      ; pletter v0.5c msx unpacker
+       2.  00:84B2                      
+       3.  00:84B2                      ; call unpack with hl pointing to some pletter5 data, and de pointing to the destination.
+       4.  00:84B2                      ; changes all registers
+       5.  00:84B2                      
+       6.  00:84B2                      ; define lengthindata when the original size is written in the pletter data
+       7.  00:84B2                      
+       8.  00:84B2                      ;  define LENGTHINDATA
+       9.  00:84B2                      
+      10.  00:84B2                        module pletter
+      11.  00:84B2                      
+      12.  00:84B2                        macro GETBIT
+      13.  00:84B2                    <   add a,a
+      14.  00:84B2                    <   call z,getbit
+      15.  00:84B2                    <   endmacro
+      16.  00:84B2                      
+      17.  00:84B2                        macro GETBITEXX
+      18.  00:84B2                    <   add a,a
+      19.  00:84B2                    <   call z,getbitexx
+      20.  00:84B2                    <   endmacro
+      21.  00:84B2                      
+      22.  00:84B2                      @unpack
+      23.  00:84B2                      
+      24.  00:84B2                        ifdef LENGTHINDATA
+      25.  00:84B2                    ~   inc hl
+      26.  00:84B2                    ~   inc hl
+      27.  00:84B2                    ~   endif
+      28.  00:84B2                      
+      29.  00:84B2  7E                    ld a,(hl)
+      30.  00:84B3  23                    inc hl
+      31.  00:84B4  D9                    exx
+      32.  00:84B5  11 00 00              ld de,0
+      33.  00:84B8  87                    add a,a
+      34.  00:84B9  3C                    inc a
+      35.  00:84BA  CB 13                 rl e
+      36.  00:84BC  87                    add a,a
+      37.  00:84BD  CB 13                 rl e
+      38.  00:84BF  87                    add a,a
+      39.  00:84C0  CB 13                 rl e
+      40.  00:84C2  CB 13                 rl e
+      41.  00:84C4  21 50 85              ld hl,modes
+      42.  00:84C7  19                    add hl,de
+      43.  00:84C8  5E                    ld e,(hl)
+      44.  00:84C9  DD 6B                 ld ixl,e
+      45.  00:84CB  23                    inc hl
+      46.  00:84CC  5E                    ld e,(hl)
+      47.  00:84CD  DD 63                 ld ixh,e
+      48.  00:84CF  1E 01                 ld e,1
+      49.  00:84D1  D9                    exx
+      50.  00:84D2  FD 21 D8 84           ld iy,loop
+      51.  00:84D6                      literal
+      52.  00:84D6  ED A0                 ldi
+      53.  00:84D8                      loop
+      54.  00:84D8                        GETBIT
+      54.  00:84D8  87                >   add a,a
+      54.  00:84D9  CC 46 85          >   call z,getbit
+      55.  00:84DC  30 F8                 jr nc,literal
+      56.  00:84DE  D9                    exx
+      57.  00:84DF  62                    ld h,d
+      58.  00:84E0  6B                    ld l,e
+      59.  00:84E1                      getlen
+      60.  00:84E1                        GETBITEXX
+      60.  00:84E1  87                >   add a,a
+      60.  00:84E2  CC 4A 85          >   call z,getbitexx
+      61.  00:84E5  30 1B                 jr nc,.lenok
+      62.  00:84E7                      .lus
+      63.  00:84E7                        GETBITEXX
+      63.  00:84E7  87                >   add a,a
+      63.  00:84E8  CC 4A 85          >   call z,getbitexx
+      64.  00:84EB  ED 6A                 adc hl,hl
+      65.  00:84ED  D8                    ret c
+      66.  00:84EE                        GETBITEXX
+      66.  00:84EE  87                >   add a,a
+      66.  00:84EF  CC 4A 85          >   call z,getbitexx
+      67.  00:84F2  30 0E                 jr nc,.lenok
+      68.  00:84F4                        GETBITEXX
+      68.  00:84F4  87                >   add a,a
+      68.  00:84F5  CC 4A 85          >   call z,getbitexx
+      69.  00:84F8  ED 6A                 adc hl,hl
+      70.  00:84FA  D8                    ret c
+      71.  00:84FB                        GETBITEXX
+      71.  00:84FB  87                >   add a,a
+      71.  00:84FC  CC 4A 85          >   call z,getbitexx
+      72.  00:84FF  DA E7 84              jp c,.lus
+      73.  00:8502                      .lenok
+      74.  00:8502  23                    inc hl
+      75.  00:8503  D9                    exx
+      76.  00:8504  4E                    ld c,(hl)
+      77.  00:8505  23                    inc hl
+      78.  00:8506  06 00                 ld b,0
+      79.  00:8508  CB 79                 bit 7,c
+      80.  00:850A  CA 37 85              jp z,offsok
+      81.  00:850D  DD E9                 jp ix
+      82.  00:850F                      
+      83.  00:850F                      mode6
+      84.  00:850F                        GETBIT
+      84.  00:850F  87                >   add a,a
+      84.  00:8510  CC 46 85          >   call z,getbit
+      85.  00:8513  CB 10                 rl b
+      86.  00:8515                      mode5
+      87.  00:8515                        GETBIT
+      87.  00:8515  87                >   add a,a
+      87.  00:8516  CC 46 85          >   call z,getbit
+      88.  00:8519  CB 10                 rl b
+      89.  00:851B                      mode4
+      90.  00:851B                        GETBIT
+      90.  00:851B  87                >   add a,a
+      90.  00:851C  CC 46 85          >   call z,getbit
+      91.  00:851F  CB 10                 rl b
+      92.  00:8521                      mode3
+      93.  00:8521                        GETBIT
+      93.  00:8521  87                >   add a,a
+      93.  00:8522  CC 46 85          >   call z,getbit
+      94.  00:8525  CB 10                 rl b
+      95.  00:8527                      mode2
+      96.  00:8527                        GETBIT
+      96.  00:8527  87                >   add a,a
+      96.  00:8528  CC 46 85          >   call z,getbit
+      97.  00:852B  CB 10                 rl b
+      98.  00:852D                        GETBIT
+      98.  00:852D  87                >   add a,a
+      98.  00:852E  CC 46 85          >   call z,getbit
+      99.  00:8531  30 04                 jr nc,offsok
+     100.  00:8533  B7                    or a
+     101.  00:8534  04                    inc b
+     102.  00:8535  CB B9                 res 7,c
+     103.  00:8537                      offsok
+     104.  00:8537  03                    inc bc
+     105.  00:8538  E5                    push hl
+     106.  00:8539  D9                    exx
+     107.  00:853A  E5                    push hl
+     108.  00:853B  D9                    exx
+     109.  00:853C  6B                    ld l,e
+     110.  00:853D  62                    ld h,d
+     111.  00:853E  ED 42                 sbc hl,bc
+     112.  00:8540  C1                    pop bc
+     113.  00:8541  ED B0                 ldir
+     114.  00:8543  E1                    pop hl
+     115.  00:8544  FD E9                 jp iy
+     116.  00:8546                      
+     117.  00:8546                      getbit
+     118.  00:8546  7E                    ld a,(hl)
+     119.  00:8547  23                    inc hl
+     120.  00:8548  17                    rla
+     121.  00:8549  C9                    ret
+     122.  00:854A                      
+     123.  00:854A                      getbitexx
+     124.  00:854A  D9                    exx
+     125.  00:854B  7E                    ld a,(hl)
+     126.  00:854C  23                    inc hl
+     127.  00:854D  D9                    exx
+     128.  00:854E  17                    rla
+     129.  00:854F  C9                    ret
+     130.  00:8550                      
+     131.  00:8550                      modes
+     132.  00:8550  37 85                 word offsok
+     133.  00:8552  27 85                 word mode2
+     134.  00:8554  21 85                 word mode3
+     135.  00:8556  1B 85                 word mode4
+     136.  00:8558  15 85                 word mode5
+     137.  00:855A  0F 85                 word mode6
+     138.  00:855C                      
+     139.  00:855C                        endmodule
+     140.  00:855C                      
+     141.  00:855C                      ;eof
+     410   00:855C                      
+     411   00:855C                      include "src/controles.asm"
+       1.  00:855C                      teclas_o_p_q_a:
+       2.  00:855C  CD 9F 00                call CHGET ;espera a que se pulse una tecla, cuando se pulsa la almacena en el registro a del z80
+       3.  00:855F                      
+       4.  00:855F  FE 70                   cp 'p'
+       5.  00:8561  CA BD 86                jp z, mover_coche_derecha
+       6.  00:8564  FE 6F                   cp 'o'
+       7.  00:8566  CA E4 86                jp z, mover_coche_izquierda
+       8.  00:8569  FE 71                   cp 'q'
+       9.  00:856B  CA 0E 87                jp z, mover_coche_arriba
+      10.  00:856E  FE 61                   cp 'a'
+      11.  00:8570  CA 34 87                jp z, mover_coche_abajo
+      12.  00:8573  FE 74                   cp 't'
+      13.  00:8575  CA 65 86                jp z, poner_coche_punto_inicial
+      14.  00:8578                      
+      15.  00:8578  C9                      ret
+      16.  00:8579                      
+      17.  00:8579                      cursores:
+      18.  00:8579  3E 00                   ld a,0
+      19.  00:857B  CD D5 00                call GTSTCK
+      20.  00:857E                          
+      21.  00:857E  FE 01                   cp 1
+      22.  00:8580  CA 0E 87                jp z, mover_coche_arriba
+      23.  00:8583  FE 02                   cp 2
+      24.  00:8585  CA 0A 87                jp z, mover_coche_diagonal_arriba_derecha
+      25.  00:8588  FE 03                   cp 3
+      26.  00:858A  CA BD 86                jp z, mover_coche_derecha
+      27.  00:858D  FE 04                   cp 4
+      28.  00:858F  CA 0C 87                jp z, mover_coche_diagonal_abajo_derecha
+      29.  00:8592  FE 05                   cp 5
+      30.  00:8594  CA 34 87                jp z, mover_coche_abajo
+      31.  00:8597  FE 06                   cp 6
+      32.  00:8599  CA 0D 87                jp z, mover_coche_diagonal_abajo_izquierda
+      33.  00:859C  FE 07                   cp 7
+      34.  00:859E  CA E4 86                jp z, mover_coche_izquierda
+      35.  00:85A1  FE 08                   cp 8
+      36.  00:85A3  CA 0B 87                jp z, mover_coche_diagonal_arriba_izquierda
+      37.  00:85A6                      
+      38.  00:85A6  C9                      ret
+      39.  00:85A7                      
+      40.  00:85A7                      disparo_presionado_o_no:
+      41.  00:85A7  3E 00                   ld a,0
+      42.  00:85A9  CD D8 00                call GTTRIG ; pone en el registro a el resultado
+      43.  00:85AC  FE 99                   cp #99
+      44.  00:85AE                          
+      45.  00:85AE                      
+      46.  00:85AE  C9                      ret
+     412   00:85AF                      include "src/coche.asm"
+       1.  00:85AF                      ; --- Slot 0
+       2.  00:85AF                      sprites_coche:
+       3.  00:85AF                          ;Son 4 spites=4*32=128 bytes
+       4.  00:85AF                      
+       5.  00:85AF                          ; 0-coche mirando arriba
+       6.  00:85AF                          db 007h,008h,030h,043h,047h,040h,027h,03Fh
+       6.  00:85AF  07 08 30 43 47 40 27 3F 
+       7.  00:85B7                          db 060h,080h,0C0h,0C0h,0C0h,080h,040h,03Fh
+       7.  00:85B7  60 80 C0 C0 C0 80 40 3F 
+       8.  00:85BF                          db 0E0h,010h,00Ch,0C2h,0E2h,002h,0E4h,0FCh
+       8.  00:85BF  E0 10 0C C2 E2 02 E4 FC 
+       9.  00:85C7                          db 006h,001h,003h,003h,003h,001h,002h,0FCh
+       9.  00:85C7  06 01 03 03 03 01 02 FC 
+      10.  00:85CF                          ; 1-coche mirando dercha
+      11.  00:85CF                          db 03Eh,05Dh,081h,080h,080h,080h,080h,080h
+      11.  00:85CF  3E 5D 81 80 80 80 80 80 
+      12.  00:85D7                          db 080h,080h,080h,080h,080h,081h,05Dh,03Eh
+      12.  00:85D7  80 80 80 80 80 81 5D 3E 
+      13.  00:85DF                          db 000h,038h,0C4h,084h,082h,0D1h,0D9h,0D9h
+      13.  00:85DF  00 38 C4 84 82 D1 D9 D9 
+      14.  00:85E7                          db 0D9h,0D9h,0D1h,082h,084h,0C4h,038h,000h
+      14.  00:85E7  D9 D9 D1 82 84 C4 38 00 
+      15.  00:85EF                          ; 2-coche mirando abajo
+      16.  00:85EF                          db 03Fh,040h,080h,0C0h,0C0h,0C0h,080h,060h
+      16.  00:85EF  3F 40 80 C0 C0 C0 80 60 
+      17.  00:85F7                          db 03Fh,027h,040h,047h,043h,030h,008h,007h
+      17.  00:85F7  3F 27 40 47 43 30 08 07 
+      18.  00:85FF                          db 0FCh,002h,001h,003h,003h,003h,001h,006h
+      18.  00:85FF  FC 02 01 03 03 03 01 06 
+      19.  00:8607                          db 0FCh,0E4h,002h,0E2h,0C2h,00Ch,010h,0E0h
+      19.  00:8607  FC E4 02 E2 C2 0C 10 E0 
+      20.  00:860F                          ; 3-coche mirando izquierda
+      21.  00:860F                          db 000h,01Ch,023h,021h,041h,08Bh,09Bh,09Bh
+      21.  00:860F  00 1C 23 21 41 8B 9B 9B 
+      22.  00:8617                          db 09Bh,09Bh,08Bh,041h,021h,023h,01Ch,000h
+      22.  00:8617  9B 9B 8B 41 21 23 1C 00 
+      23.  00:861F                          db 07Ch,0BAh,081h,001h,001h,001h,001h,001h
+      23.  00:861F  7C BA 81 01 01 01 01 01 
+      24.  00:8627                          db 001h,001h,001h,001h,001h,081h,0BAh,07Ch
+      24.  00:8627  01 01 01 01 01 81 BA 7C 
+      25.  00:862F                          
+      26.  00:862F  00 (4)              atributos_coche_sprite: ds 4,0
+      27.  00:8633                      ;atributos_coche_sprite_posicion_y DB $80 ;posicion y
+      28.  00:8633                      ;atributos_coche_sprite_posicion_x DB $55 ;posicion x
+      29.  00:8633                      ;atributos_coche_sprite_posicion_patron DB $00 ;numero de patron, el patrón solo es el 1
+      30.  00:8633                      ;atributos_coche_sprite_posicion_color DB $01 ; aqui se defien el color y el early clock (que es para desparecer el sprite),el último byte el 1000 1000 (1000 para que aparezca) y 1000 (el color rojo)=1000+1000=88 en decimal
+      31.  00:8633                      
+      32.  00:8633                      
+      33.  00:8633                      ;atributos_coche_sprite2: ds 4,0
+      34.  00:8633                      ;atributos_coche_sprite2_posicion_y DB $80 ;posicion y
+      35.  00:8633                      ;atributos_coche_sprite2_posicion_x DB $55 ;posicion x
+      36.  00:8633                      ;atributos_coche_sprite2_posicion_patron DB $04 ;numero de patron, el patrón solo es el 1
+      37.  00:8633                      ;atributos_coche_sprite2_posicion_color DB $05 ; aqui se defien el color y el early clock (que es para desparecer el sprite),el último byte el 1000 1000 (1000 para que aparezca) y 1000 (el color rojo)=1000+1000=88 en decimal
+      38.  00:8633                      
+      39.  00:8633                      
+      40.  00:8633                      
+      41.  00:8633                      
+      42.  00:8633                      inicializacion_variables_coche_sprite:
+      43.  00:8633  3E 0A                   ld a,10 
+      44.  00:8635  32 88 87                ld (posicion_x),a
+      45.  00:8638  3E 9B                   ld a,155 
+      46.  00:863A  32 87 87                ld (posicion_y),a
+      47.  00:863D  3E 00                   ld a, 0 ;developer
+      48.  00:863F  32 8E 87                ld (patron),a
+      49.  00:8642  3E 0D                   ld a, 13 ; el 13 es el color rosa
+      50.  00:8644  32 8F 87                ld (color),a
+      51.  00:8647                      
+      52.  00:8647                          ;Para sprite 2
+      53.  00:8647                          ;ld a,#80
+      54.  00:8647                          ;ld (posicion_y),a
+      55.  00:8647                          ;ld a,#55
+      56.  00:8647                          ;ld (posicion_x),a
+      57.  00:8647                          ;ld a, #04
+      58.  00:8647                          ;ld (patron_sprite2),a
+      59.  00:8647                          ;ld a, #05
+      60.  00:8647                          ;ld (color_sprite2),a
+      61.  00:8647                      
+      62.  00:8647  C9                      ret
+      63.  00:8648                      actualiza_atributos_de_coche_sprite:
+      64.  00:8648  DD 21 2F 86             ld ix,atributos_coche_sprite
+      65.  00:864C                          ;para el sprite 1
+      66.  00:864C  3A 87 87                ld a, (posicion_y)
+      67.  00:864F  DD 77 00                ld (ix),a
+      68.  00:8652  3A 88 87                ld a,(posicion_x)
+      69.  00:8655  DD 77 01                ld (ix+1),a
+      70.  00:8658  3A 8E 87                ld a, (patron)
+      71.  00:865B  DD 77 02                ld (ix+2),a
+      72.  00:865E  3A 8F 87                ld a, (color)
+      73.  00:8661  DD 77 03                ld (ix+3),a
+      74.  00:8664                          ;para el sprite 2
+      75.  00:8664                          ;ld a, (posicion_y)
+      76.  00:8664                          ;ld (ix+4),a
+      77.  00:8664                          ;ld a,(posicion_x)
+      78.  00:8664                          ;ld (ix+5),a
+      79.  00:8664                          ;ld a, (patron_sprite2)
+      80.  00:8664                          ;ld (ix+6),a
+      81.  00:8664                          ;ld a, (color_sprite2)
+      82.  00:8664                          ;ld (ix+7),a
+      83.  00:8664  C9                      ret
+      84.  00:8665                      
+      85.  00:8665                      poner_coche_punto_inicial:
+      86.  00:8665  CD 33 86                call inicializacion_variables_coche_sprite
+      87.  00:8668  CD 48 86                call actualiza_atributos_de_coche_sprite
+      88.  00:866B  C9                      ret
+      89.  00:866C                      
+      90.  00:866C                      sacar_coche_de_la_pantalla:
+      91.  00:866C  3E FF                   ld a,255
+      92.  00:866E  32 88 87                ld (posicion_x),a
+      93.  00:8671                          ;ld a,160 ;producción
+      94.  00:8671  3E C8                   ld a,200
+      95.  00:8673  32 87 87                ld (posicion_y),a
+      96.  00:8676  CD 48 86                call actualiza_atributos_de_coche_sprite
+      97.  00:8679  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+      98.  00:867C  C9                      ret
+      99.  00:867D                      
+     100.  00:867D                      
+     101.  00:867D                      poner_coche_en_posicion_screen3:
+     102.  00:867D  3E C8                   ld a,200 ;produución
+     103.  00:867F                          ;ld a,200 ;developer
+     104.  00:867F  32 88 87                ld (posicion_x),a
+     105.  00:8682  3E B4                   ld a,180 ;producción
+     106.  00:8684                          ;ld a,80
+     107.  00:8684  32 87 87                ld (posicion_y),a
+     108.  00:8687  CD 48 86                call actualiza_atributos_de_coche_sprite
+     109.  00:868A  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+     110.  00:868D  C9                      ret
+     111.  00:868E                      poner_coche_en_posicion_screen4:
+     112.  00:868E                          ;ld a,200 ;produución
+     113.  00:868E  3E 0A                   ld a,10 ;developer
+     114.  00:8690  32 88 87                ld (posicion_x),a
+     115.  00:8693                          ;ld a,180 ;producción
+     116.  00:8693  3E 41                   ld a,65
+     117.  00:8695  32 87 87                ld (posicion_y),a
+     118.  00:8698  CD 48 86                call actualiza_atributos_de_coche_sprite
+     119.  00:869B  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+     120.  00:869E  C9                      ret
+     121.  00:869F                      poner_coche_en_posicion_screen5:
+     122.  00:869F                          ;ld a,200 ;produución
+     123.  00:869F  3E 0A                   ld a,10 ;developer
+     124.  00:86A1  32 88 87                ld (posicion_x),a
+     125.  00:86A4                          ;ld a,180 ;producción
+     126.  00:86A4  3E 0A                   ld a,10
+     127.  00:86A6  32 87 87                ld (posicion_y),a
+     128.  00:86A9  CD 48 86                call actualiza_atributos_de_coche_sprite
+     129.  00:86AC  CD B0 86                call volcar_sprite_coche_atributos_en_VRAM
+     130.  00:86AF  C9                      ret
+     131.  00:86B0                      
+     132.  00:86B0                      
+     133.  00:86B0                      ;----------------------------VRAM UPDATE------------------------
+     134.  00:86B0                      volcar_sprite_coche_atributos_en_VRAM:
+     135.  00:86B0  21 2F 86                ld hl, atributos_coche_sprite ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+     136.  00:86B3  11 00 1B                ld de, #1b00; la rutina necesita haber cargado previamente con de la dirección de inicio de la VRAM          
+     137.  00:86B6  01 04 00                ld bc,4; bytes
+     138.  00:86B9  CD 5C 00                call  LDIRVM ; Mira arriba, pone la explicación
+     139.  00:86BC                      
+     140.  00:86BC  C9                      ret
+     141.  00:86BD                      
+     142.  00:86BD                          
+     143.  00:86BD                      ;---------------------CONTROLES (esta sería la forma de hacerlo sin variables)----------------------------
+     144.  00:86BD                      ;mover_coche_derecha:
+     145.  00:86BD                          ;ld a,(ix+1); obetenemos el valor actual de la posicion x
+     146.  00:86BD                          ;add 3; incrementamos en 1 el valor
+     147.  00:86BD                          ;ld (ix+1), a ; se lo metemos al atributo
+     148.  00:86BD                          ;ld (ix+5), a ; atrubuto posicion x del sprite 2
+     149.  00:86BD                          ;ret
+     150.  00:86BD                      ;mover_coche_izquierda:
+     151.  00:86BD                          ;ld a,(ix+1); obetenemos el valor actual de la posicion x
+     152.  00:86BD                          ;sub 3 ; incrementamos en 1 el valor
+     153.  00:86BD                          ;ld (ix+1), a ; se lo metemos al atributo posicion x sprite 1
+     154.  00:86BD                          ;ld (ix+5), a ; atrubuto posicion x del sprite 2
+     155.  00:86BD                          ;ret
+     156.  00:86BD                      ;mover_coche_arriba:
+     157.  00:86BD                          ;ld a,(ix); obetenemos el valor actual de la posicion y
+     158.  00:86BD                          ;sub 3 ; incrementamos en 3 el valor
+     159.  00:86BD                          ;ld (ix), a ; se lo metemos al atributo  y sprite 1
+     160.  00:86BD                          ;ld (ix+4), a ; se lo metemos al atributo posicion y sprite 2
+     161.  00:86BD                          ;ret
+     162.  00:86BD                      ;mover_coche_abajo:
+     163.  00:86BD                          ;ld a,(ix); obetenemos el valor actual de la posicion y
+     164.  00:86BD                          ;add 3 ; incrementamos en 3 el valor
+     165.  00:86BD                          ;ld (ix), a ; se lo metemos al atributo posicion y sprite 1
+     166.  00:86BD                          ;ld (ix+4), a ; se lo metemos al atributo posicion y sprite 2
+     167.  00:86BD                          ;ret
+     168.  00:86BD                      
+     169.  00:86BD                      
+     170.  00:86BD                      
+     171.  00:86BD                      ;---------------------CONTROLES----------------------------
+     172.  00:86BD                      mover_coche_derecha:
+     173.  00:86BD                          ;comprobamos la colision lateral con un solido
+     174.  00:86BD  3A 88 87                ld a,(posicion_x)
+     175.  00:86C0                          ;add 16 ;le añadimos 16 porque estamos trabajando con tiles de 16 pixeles
+     176.  00:86C0  C6 10                   add 16
+     177.  00:86C2  57                      ld d,a ;en d le metemos la posicionn x
+     178.  00:86C3  3A 87 87                ld a, (posicion_y)
+     179.  00:86C6                          ;add 15
+     180.  00:86C6  C6 0F                   add 15
+     181.  00:86C8  5F                      ld e, a ; en e le metemos la posicion y
+     182.  00:86C9  CD 67 87                call dame_el_tile_que_hay_en_x_e_y
+     183.  00:86CC  FE 0B                   cp 11 ;si es el tile 63 (la losa gris) que es que hemos decido que es un bloque sólido
+     184.  00:86CE  D2 5A 87                jp nc, para_coche ; si al restarlo  es negativo y dará carry, si no hay está bien
+     185.  00:86D1  FE 06                   cp 6
+     186.  00:86D3  D2 6D 82                jp nc, incrementar_pantalla
+     187.  00:86D6                      
+     188.  00:86D6  3A 88 87                ld a,(posicion_x); obetenemos el valor actual de la posicion x
+     189.  00:86D9  C6 01                   add 1; incrementamos en 1 el valor
+     190.  00:86DB  32 88 87                ld (posicion_x), a ; se lo metemos al atributo
+     191.  00:86DE  3E 04                   ld a, 4 ; maover a la derecha es el patrón 4
+     192.  00:86E0  32 8E 87                ld (patron),a
+     193.  00:86E3  C9                      ret
+     194.  00:86E4                      mover_coche_izquierda:
+     195.  00:86E4                          ;comprobación choque con solido
+     196.  00:86E4  3A 88 87                ld a,(posicion_x)
+     197.  00:86E7                          ;sub 1 ;le añadimos 16 porque estamos trabajando con tiles de 16 pixeles
+     198.  00:86E7  D6 01                   sub 1
+     199.  00:86E9  57                      ld d,a ;en d le metemos la posicionn x
+     200.  00:86EA  3A 87 87                ld a, (posicion_y)
+     201.  00:86ED                          ;add 15
+     202.  00:86ED  C6 0F                   add 15
+     203.  00:86EF  5F                      ld e, a ; en e le metemos la posicion y
+     204.  00:86F0  CD 67 87                call dame_el_tile_que_hay_en_x_e_y
+     205.  00:86F3  FE 0B                   cp 11 ;si es el tile 63 (la losa gris) que es que hemos decido que es un bloque sólido
+     206.  00:86F5  30 63                   jr nc, para_coche ; si al restarlo  es negativo y dará carry, si no hay está bien
+     207.  00:86F7  FE 06                   cp 6
+     208.  00:86F9  D2 6D 82                jp nc, incrementar_pantalla
+     209.  00:86FC                      
+     210.  00:86FC                      
+     211.  00:86FC  3A 88 87                ld a,(posicion_x); obetenemos el valor actual de la posicion x
+     212.  00:86FF  D6 01                   sub 1 ; incrementamos en 1 el valor
+     213.  00:8701  32 88 87                ld (posicion_x), a ; se lo metemos al atributo posicion x sprite 1
+     214.  00:8704  3E 0C                   ld a, 12 ; maover a la izquierda es el patrón 12
+     215.  00:8706  32 8E 87                ld (patron),a
+     216.  00:8709  C9                      ret
+     217.  00:870A                      mover_coche_diagonal_arriba_derecha
+     218.  00:870A                      
+     219.  00:870A  C9                      ret
+     220.  00:870B                      mover_coche_diagonal_arriba_izquierda
+     221.  00:870B                      
+     222.  00:870B  C9                      ret
+     223.  00:870C                      mover_coche_diagonal_abajo_derecha
+     224.  00:870C                      
+     225.  00:870C  C9                      ret
+     226.  00:870D                      mover_coche_diagonal_abajo_izquierda
+     227.  00:870D                      
+     228.  00:870D  C9                      ret
+     229.  00:870E                      mover_coche_arriba:
+     230.  00:870E  3A 88 87                ld a,(posicion_x)
+     231.  00:8711                          ;add 16 ;le añadimos 16 porque estamos trabajando con tiles de 16 pixeles
+     232.  00:8711                          ;add 0
+     233.  00:8711  C6 00                   add 0
+     234.  00:8713  57                      ld d,a ;en d le metemos la posicionn x
+     235.  00:8714  3A 87 87                ld a, (posicion_y)
+     236.  00:8717                          ;add 0
+     237.  00:8717  C6 00                   add 0
+     238.  00:8719  5F                      ld e, a ; en e le metemos la posicion y
+     239.  00:871A  CD 67 87                call dame_el_tile_que_hay_en_x_e_y
+     240.  00:871D  FE 0B                   cp 11 ;si es el tile 63 (la losa gris) que es que hemos decido que es un bloque sólido
+     241.  00:871F  30 39                   jr nc, para_coche ; si al restarlo  es negativo y dará carry, si no hay está bien
+     242.  00:8721  FE 06                   cp 6
+     243.  00:8723  D2 6D 82                jp nc, incrementar_pantalla
+     244.  00:8726                      
+     245.  00:8726                      
+     246.  00:8726  3A 87 87                ld a,(posicion_y); obetenemos el valor actual de la posicion y
+     247.  00:8729  D6 01                   sub 1 ; incrementamos en 3 el valor
+     248.  00:872B  32 87 87                ld (posicion_y), a ; se lo metemos al atributo  y sprite 1
+     249.  00:872E  3E 00                   ld a, 0 ; maover a la arriba es el patrón 0
+     250.  00:8730  32 8E 87                ld (patron),a
+     251.  00:8733  C9                      ret
+     252.  00:8734                      mover_coche_abajo:
+     253.  00:8734  3A 88 87                ld a,(posicion_x)
+     254.  00:8737  C6 00                   add 0
+     255.  00:8739                          ;add 0;le añadimos 16 porque estamos trabajando con tiles de 16 pixeles
+     256.  00:8739  57                      ld d,a ;en d le metemos la posicionn x
+     257.  00:873A  3A 87 87                ld a, (posicion_y)
+     258.  00:873D                          ;add 15
+     259.  00:873D  C6 11                   add 17
+     260.  00:873F  5F                      ld e, a ; en e le metemos la posicion y
+     261.  00:8740  CD 67 87                call dame_el_tile_que_hay_en_x_e_y
+     262.  00:8743  FE 0B                   cp 11 ;si es el tile 63 (la losa gris) que es que hemos decido que es un bloque sólido
+     263.  00:8745  30 13                   jr nc, para_coche ; si al restarlo  es negativo y dará carry, si no hay está bien
+     264.  00:8747  FE 06                   cp 6
+     265.  00:8749  D2 6D 82                jp nc, incrementar_pantalla
+     266.  00:874C                      
+     267.  00:874C  3A 87 87                ld a,(posicion_y); obetenemos el valor actual de la posicion y
+     268.  00:874F  C6 01                   add 1 ; incrementamos en 3 el valor
+     269.  00:8751  32 87 87                ld (posicion_y), a ; se lo metemos al atributo posicion y sprite 1
+     270.  00:8754  3E 08                   ld a, 8 ; maover a la bajo es el patrón 0
+     271.  00:8756  32 8E 87                ld (patron),a
+     272.  00:8759  C9                      ret
+     273.  00:875A                      para_coche
+     274.  00:875A  3A 88 87                ld a,(posicion_x)
+     275.  00:875D  32 88 87                ld (posicion_x),a
+     276.  00:8760  3A 87 87                ld a, (posicion_y)
+     277.  00:8763  32 87 87                ld (posicion_y),a
+     278.  00:8766  C9                      ret
+     279.  00:8767                      
+     280.  00:8767                      
+     281.  00:8767                      dame_el_tile_que_hay_en_x_e_y:
+     282.  00:8767                          ;recordad en d tengo la "x" y en e la "y"
+     283.  00:8767                          ;Vamos a hacer esta formula (y/8)*32+(x/8)
+     284.  00:8767                          ;esta es la parte (y/8)*32
+     285.  00:8767                          ;d tiene la posicion de x
+     286.  00:8767                          ;e tiene la posicion de y
+     287.  00:8767  7B                      ld a,e ;a=y
+     288.  00:8768  CB 3F CB 3F CB 3F   [3] srl a  ;a=y/8 ;con srl estas dividiendo entre 2, 3 veces sería como dividir entre 8, en realidad corre a la derecha los bits. 
+     289.  00:876E  26 00                   ld h,0
+     290.  00:8770  6F                      ld l,a ;hl=y/8
+     291.  00:8771  29 29 29 29 29      [5] add hl, hl ;x32,  sumar algo por si mismo es como multiplizarlo por 2, si lo repetivos 5 es como si o multiplixaramos por 32
+     292.  00:8776                      
+     293.  00:8776                          ;Esta es la parte +(x/8)
+     294.  00:8776  7A                      ld a,d ;a=x
+     295.  00:8777  CB 3F CB 3F CB 3F   [3] srl a ;a=x/8
+     296.  00:877D  16 00                   ld d,0
+     297.  00:877F  5F                      ld e,a ;de=x/8
+     298.  00:8780  19                      add hl,de ;hl=(y/8)*32+(x/8)
+     299.  00:8781                      
+     300.  00:8781  11 7D 93                ld de, buffer_de_colsiones
+     301.  00:8784  19                      add hl,de ;hl=buffer_colisiones + (y/8)*32+(x/8)
+     302.  00:8785                      
+     303.  00:8785  7E                      ld a,(hl) ;metemos en a el tile que nos pide
+     304.  00:8786  C9                      ret
+     305.  00:8787                      
+     306.  00:8787                      
+     307.  00:8787                      
+     308.  00:8787                      
+     309.  00:8787                      
+     310.  00:8787                      
+     311.  00:8787                      
+     312.  00:8787                      
+     313.  00:8787                      ;Definición de variables
+     314.  00:8787  00                  posicion_y: db 0
+     315.  00:8788  00                  posicion_x: db 0
+     316.  00:8789  00                  incrementa_y: db 0
+     317.  00:878A  00                  incrementa_x: db 0
+     318.  00:878B  00                  direccion: db 0
+     319.  00:878C  00                  paso: db 0
+     320.  00:878D  00                  velocidad: db 0
+     321.  00:878E  00                  patron: db 0
+     322.  00:878F  00                  color: db 0
+     323.  00:8790  00                  patron_sprite2: db 0
+     324.  00:8791  00                  color_sprite2: db 0
+     325.  00:8792                      
+     413   00:8792                      include "src/enemigo.asm"
+       1.  00:8792                      sprites_enemigo:
+       2.  00:8792                      
+       3.  00:8792                          ; 4-Enemigo mirando frente
+       4.  00:8792                          db 000h,001h,001h,007h,00Bh,00Bh,00Bh,00Bh
+       4.  00:8792  00 01 01 07 0B 0B 0B 0B 
+       5.  00:879A                          db 003h,003h,002h,006h,00Ch,008h,000h,000h
+       5.  00:879A  03 03 02 06 0C 08 00 00 
+       6.  00:87A2                          db 000h,080h,080h,0E0h,0D0h,0D0h,0D0h,0D0h
+       6.  00:87A2  00 80 80 E0 D0 D0 D0 D0 
+       7.  00:87AA                          db 0C0h,0C0h,040h,040h,040h,040h,040h,060h
+       7.  00:87AA  C0 C0 40 40 40 40 40 60 
+       8.  00:87B2                          ; 5-Enemigo  frente a ndando
+       9.  00:87B2                          db 000h,001h,001h,007h,00Bh,00Bh,00Bh,00Bh
+       9.  00:87B2  00 01 01 07 0B 0B 0B 0B 
+      10.  00:87BA                          db 003h,003h,002h,002h,002h,002h,002h,006h
+      10.  00:87BA  03 03 02 02 02 02 02 06 
+      11.  00:87C2                          db 000h,080h,080h,0E0h,0D0h,0D0h,0D0h,0D0h
+      11.  00:87C2  00 80 80 E0 D0 D0 D0 D0 
+      12.  00:87CA                          db 0C0h,0C0h,040h,060h,020h,020h,030h,000h
+      12.  00:87CA  C0 C0 40 60 20 20 30 00 
+      13.  00:87D2                          ; 6-Enemigo mirando izquierd
+      14.  00:87D2                          db 000h,001h,001h,003h,003h,003h,003h,003h
+      14.  00:87D2  00 01 01 03 03 03 03 03 
+      15.  00:87DA                          db 001h,001h,001h,001h,001h,001h,001h,003h
+      15.  00:87DA  01 01 01 01 01 01 01 03 
+      16.  00:87E2                          db 000h,080h,080h,0C0h,0C0h,0C0h,0C0h,0C0h
+      16.  00:87E2  00 80 80 C0 C0 C0 C0 C0 
+      17.  00:87EA                          db 080h,080h,080h,080h,080h,080h,080h,080h
+      17.  00:87EA  80 80 80 80 80 80 80 80 
+      18.  00:87F2                          ; 7-Enemigo izquierd andando
+      19.  00:87F2                          db 000h,001h,001h,003h,003h,003h,003h,003h
+      19.  00:87F2  00 01 01 03 03 03 03 03 
+      20.  00:87FA                          db 001h,001h,001h,001h,001h,001h,001h,003h
+      20.  00:87FA  01 01 01 01 01 01 01 03 
+      21.  00:8802                          db 000h,080h,080h,0C0h,0C0h,0C0h,0C0h,0C0h
+      21.  00:8802  00 80 80 C0 C0 C0 C0 C0 
+      22.  00:880A                          db 080h,080h,080h,080h,040h,020h,010h,000h
+      22.  00:880A  80 80 80 80 40 20 10 00 
+      23.  00:8812                          ; 8-Enemigo mirando derecha
+      24.  00:8812                          db 000h,001h,001h,003h,003h,003h,003h,003h
+      24.  00:8812  00 01 01 03 03 03 03 03 
+      25.  00:881A                          db 001h,001h,001h,001h,001h,001h,001h,001h
+      25.  00:881A  01 01 01 01 01 01 01 01 
+      26.  00:8822                          db 000h,080h,080h,0C0h,0C0h,0C0h,0C0h,0C0h
+      26.  00:8822  00 80 80 C0 C0 C0 C0 C0 
+      27.  00:882A                          db 080h,080h,080h,080h,080h,080h,080h,0C0h
+      27.  00:882A  80 80 80 80 80 80 80 C0 
+      28.  00:8832                          ; 9-Enemigo  derecha andanoo
+      29.  00:8832                          db 000h,001h,001h,003h,003h,003h,003h,003h
+      29.  00:8832  00 01 01 03 03 03 03 03 
+      30.  00:883A                          db 001h,001h,001h,001h,002h,004h,008h,000h
+      30.  00:883A  01 01 01 01 02 04 08 00 
+      31.  00:8842                          db 000h,080h,080h,0C0h,0C0h,0C0h,0C0h,0C0h
+      31.  00:8842  00 80 80 C0 C0 C0 C0 C0 
+      32.  00:884A                          db 080h,080h,080h,080h,080h,080h,080h,0C0h
+      32.  00:884A  80 80 80 80 80 80 80 C0 
+      33.  00:8852                          ; 10-Enemigo mirando atras
+      34.  00:8852                          db 000h,001h,001h,007h,007h,007h,007h,007h
+      34.  00:8852  00 01 01 07 07 07 07 07 
+      35.  00:885A                          db 003h,003h,002h,003h,001h,001h,000h,000h
+      35.  00:885A  03 03 02 03 01 01 00 00 
+      36.  00:8862                          db 000h,080h,080h,0E0h,0F0h,0D0h,0D0h,0C0h
+      36.  00:8862  00 80 80 E0 F0 D0 D0 C0 
+      37.  00:886A                          db 0C0h,0C0h,040h,060h,020h,0B0h,090h,000h
+      37.  00:886A  C0 C0 40 60 20 B0 90 00 
+      38.  00:8872                          ; 11-Enemigo atras andando
+      39.  00:8872                          db 000h,001h,001h,007h,007h,007h,007h,007h
+      39.  00:8872  00 01 01 07 07 07 07 07 
+      40.  00:887A                          db 003h,003h,002h,002h,004h,005h,00Dh,001h
+      40.  00:887A  03 03 02 02 04 05 0D 01 
+      41.  00:8882                          db 000h,080h,080h,0E0h,0E0h,0D0h,0D0h,0D0h
+      41.  00:8882  00 80 80 E0 E0 D0 D0 D0 
+      42.  00:888A                          db 0C0h,0C0h,040h,040h,0C0h,080h,000h,000h
+      42.  00:888A  C0 C0 40 40 C0 80 00 00 
+      43.  00:8892                      
+      44.  00:8892                      
+      45.  00:8892                          
+      46.  00:8892                      
+      47.  00:8892  00 (4)              atributos_enemigo_sprite: ds 4,0
+      48.  00:8896                      ;atributos_enemigo_sprite_posicion_y DB $90 ;posicion y
+      49.  00:8896                      ;atributos_enemigo_sprite_posicion_x DB $90 ;posicion x
+      50.  00:8896                      ;atributos_enemigo_sprite_numero_sprite DB $08 ;numero de patron
+      51.  00:8896                      ;atributos_enemigo_sprite_color DB $08 ; aqui se defien el color y el early clock (que es para desparecer el sprite),el último byte el 1000 1000 (1000 para que aparezca) y 1000 (el color rojo)=1000+1000=88 en decimal
+      52.  00:8896                      ;---------------------VRAM UPDATE-----------------------------
+      53.  00:8896                      
+      54.  00:8896                      volcar_sprite_enemigo_atributos_en_VRAM:
+      55.  00:8896  21 92 88                ld hl, atributos_enemigo_sprite ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+      56.  00:8899  11 04 1B                ld de, #1b00+4; le ponemos el +16 porque los primeros 4 bytes son los del coche        
+      57.  00:889C  01 04 00                ld bc,4; bytes
+      58.  00:889F  CD 5C 00                call  LDIRVM ; Mira arriba, pone la explicación
+      59.  00:88A2                      
+      60.  00:88A2  C9                      ret
+      61.  00:88A3                      
+      62.  00:88A3                      ;---------------------------controles enemigo----------------------
+      63.  00:88A3                      
+      64.  00:88A3                      inicializacion_variables_enemeigo_sprite:
+      65.  00:88A3                          ;Son los sprites del 4 al 11, 4 frente, 5 frente andando, 6 izquierda, 7 izquierda andando
+      66.  00:88A3                          ;8 derecha, 9 derecha andando, 10 abajo, 11 abajo andando (recuerda que hay que multiplicar por 4)
+      67.  00:88A3  3E 32                   ld a,50
+      68.  00:88A5  32 48 8A                ld (enemigo_posicion_x),a
+      69.  00:88A8  3E 64                   ld a,100
+      70.  00:88AA  32 47 8A                ld (enemigo_posicion_y),a
+      71.  00:88AD  3E 2C                   ld a, 11*4 ; el sprite es el 11
+      72.  00:88AF  32 4A 8A                ld (enemigo_patron),a
+      73.  00:88B2  3E 04                   ld a, 4 ;le ponemos el color rojo
+      74.  00:88B4  32 4B 8A                ld (enemigo_color),a
+      75.  00:88B7  3E 00                   ld a,0 ;esto es para cambiar de sprite si anda
+      76.  00:88B9  32 49 8A                ld (enemigo_esta_andado_o_no),a
+      77.  00:88BC  3E 01                   ld a,1 ;esto es para cambiar de sprite si anda
+      78.  00:88BE  32 49 8A                ld (enemigo_esta_andado_o_no),a
+      79.  00:88C1  3E 02                   ld a,2 ;le metemos la ruta 2
+      80.  00:88C3  32 4C 8A                ld (enemigo_ruta),a
+      81.  00:88C6  C9                      ret
+      82.  00:88C7                      
+      83.  00:88C7                      actualiza_atributos_de_enemigo_sprite:
+      84.  00:88C7  DD 21 92 88             ld ix,atributos_enemigo_sprite
+      85.  00:88CB                          ;para el sprite 1
+      86.  00:88CB  3A 47 8A                ld a, (enemigo_posicion_y)
+      87.  00:88CE  DD 77 00                ld (ix),a
+      88.  00:88D1  3A 48 8A                ld a,(enemigo_posicion_x)
+      89.  00:88D4  DD 77 01                ld (ix+1),a
+      90.  00:88D7  3A 4A 8A                ld a, (enemigo_patron)
+      91.  00:88DA  DD 77 02                ld (ix+2),a
+      92.  00:88DD  3A 4B 8A                ld a, (enemigo_color)
+      93.  00:88E0  DD 77 03                ld (ix+3),a
+      94.  00:88E3  C9                      ret
+      95.  00:88E4                      poner_enemigo_punto_inicial:
+      96.  00:88E4  CD A3 88                call inicializacion_variables_enemeigo_sprite
+      97.  00:88E7  CD C7 88                call actualiza_atributos_de_enemigo_sprite
+      98.  00:88EA  C9                      ret
+      99.  00:88EB                      poner_a_cero_enmeigo_posicion_x
+     100.  00:88EB  AF                      xor a
+     101.  00:88EC  32 48 8A                ld (enemigo_posicion_x),a
+     102.  00:88EF  C9                      ret
+     103.  00:88F0                      actualiza_posicion_enemigo
+     104.  00:88F0  3A 4C 8A                ld a,(enemigo_ruta)
+     105.  00:88F3  FE 00                   cp 0
+     106.  00:88F5  CA 4D 89                    jp z,mover_enemigo_derecha
+     107.  00:88F8  FE 01                   cp 1
+     108.  00:88FA  CA 4D 89                    jp z,mover_enemigo_derecha
+     109.  00:88FD  FE 02                   cp 2
+     110.  00:88FF  CA 86 89                    jp z,mover_enemigo_izquierda
+     111.  00:8902  FE 03                   cp 3
+     112.  00:8904  CA FD 89                    jp z,mover_enemigo_abajo
+     113.  00:8907  FE 04                   cp 4
+     114.  00:8909  CA C0 89                    jp z,mover_enemigo_arriba
+     115.  00:890C  C9                      ret
+     116.  00:890D                      
+     117.  00:890D                      seleccion_ruta_uno_enemigo:
+     118.  00:890D  3E 01                   ld a, 1
+     119.  00:890F  32 4C 8A                ld (enemigo_ruta),a
+     120.  00:8912  3E 14                   ld a, 20
+     121.  00:8914  32 48 8A                ld (enemigo_posicion_x),a
+     122.  00:8917  3E 00                   ld a, 0
+     123.  00:8919  32 47 8A                ld (enemigo_posicion_y),a
+     124.  00:891C                        
+     125.  00:891C  C9                      ret
+     126.  00:891D                      
+     127.  00:891D                      seleccion_ruta_dos_enemigo:
+     128.  00:891D  3E 78                   ld a, 120
+     129.  00:891F  32 48 8A                ld (enemigo_posicion_x),a
+     130.  00:8922  3E 5A                   ld a, 90
+     131.  00:8924  32 47 8A                ld (enemigo_posicion_y),a
+     132.  00:8927  3E 02                   ld a,2
+     133.  00:8929  32 4C 8A                ld (enemigo_ruta),a
+     134.  00:892C  C9                      ret
+     135.  00:892D                      seleccion_ruta_tres_enemigo:
+     136.  00:892D  3E 03                   ld a, 3
+     137.  00:892F  32 4C 8A                ld (enemigo_ruta),a
+     138.  00:8932  3E 64                   ld a, 100
+     139.  00:8934  32 48 8A                ld (enemigo_posicion_x),a
+     140.  00:8937  3E 00                   ld a, 0
+     141.  00:8939  32 47 8A                ld (enemigo_posicion_y),a
+     142.  00:893C  C9                      ret
+     143.  00:893D                      seleccion_ruta_cuatro_enemigo:
+     144.  00:893D  3E 04                   ld a, 4
+     145.  00:893F  32 4C 8A                ld (enemigo_ruta),a
+     146.  00:8942  3E 14                   ld a, 20
+     147.  00:8944  32 48 8A                ld (enemigo_posicion_x),a
+     148.  00:8947  3E FA                   ld a, 250
+     149.  00:8949  32 47 8A                ld (enemigo_posicion_y),a
+     150.  00:894C  C9                      ret
+     151.  00:894D                      
+     152.  00:894D                      ;***************************
+     153.  00:894D                      ;******Derecha**************
+     154.  00:894D                      ;***************************
+     155.  00:894D                      
+     156.  00:894D                      
+     157.  00:894D                      ;***Controlando retraso******
+     158.  00:894D                      mover_enemigo_derecha:
+     159.  00:894D                          ;Son los sprites del 4 al 11, 4 frente, 5 frente andando, 6 izquierda, 7 izquierda andando
+     160.  00:894D                          ;8 derecha, 9 derecha andando, 10 abajo, 11 abajo andando (recuerda que hay que multiplicar por 4)
+     161.  00:894D  3A 4E 8A                ld a,(contador_retardo)
+     162.  00:8950  FE 0A                   cp 10 ; si el retardo es 10 actialuzamos la pisición
+     163.  00:8952  CA 5A 89                jp z,actuliazar_posicion_derecha
+     164.  00:8955  3C                      inc a
+     165.  00:8956  32 4E 8A                ld (contador_retardo),a; si el retardo no es 10 incrementamos en 1 su valor
+     166.  00:8959  C9                      ret
+     167.  00:895A                      actuliazar_posicion_derecha:
+     168.  00:895A  3A 48 8A                ld a,(enemigo_posicion_x); obetenemos el valor actual de la posicion x
+     169.  00:895D  3C                      inc a; incrementamos en 1 el valor
+     170.  00:895E  32 48 8A                ld (enemigo_posicion_x), a ; se lo metemos al atributo
+     171.  00:8961                      
+     172.  00:8961                          ;*****Controlando animanción
+     173.  00:8961                          ;ld a,8*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     174.  00:8961                          ;ld (enemigo_patron),a;ponemos al patrón 1
+     175.  00:8961  3A 49 8A                ld a,(enemigo_esta_andado_o_no)
+     176.  00:8964  FE 01                   cp 1 ;si esta andado
+     177.  00:8966  CA B6 89                jp z, izquierda_no_andando ;le ponemos que no ande
+     178.  00:8969  C3 AB 89                jp izquierda_andando ;sino está andado le ponemos que ande
+     179.  00:896C                      
+     180.  00:896C                          ;****controlando retraso*****
+     181.  00:896C  AF                      xor a
+     182.  00:896D  32 4E 8A                ld (contador_retardo),a ;como el retardo ha sido 20 lo ponemos a 0
+     183.  00:8970  C9                      ret
+     184.  00:8971                      derecha_andando:
+     185.  00:8971  3E 20                   ld a,8*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     186.  00:8973  32 4A 8A                ld (enemigo_patron),a
+     187.  00:8976  3E 01                   ld a,1
+     188.  00:8978  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     189.  00:897B  C9                      ret
+     190.  00:897C                      derecha_no_andando:
+     191.  00:897C  3E 24                   ld a,9*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     192.  00:897E  32 4A 8A                ld (enemigo_patron),a
+     193.  00:8981  AF                      xor a
+     194.  00:8982  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     195.  00:8985  C9                      ret
+     196.  00:8986                      
+     197.  00:8986                      
+     198.  00:8986                      
+     199.  00:8986                      
+     200.  00:8986                      
+     201.  00:8986                      
+     202.  00:8986                      
+     203.  00:8986                      
+     204.  00:8986                      
+     205.  00:8986                      ;***************************
+     206.  00:8986                      ;******izquierda**************
+     207.  00:8986                      ;***************************
+     208.  00:8986                      
+     209.  00:8986                      
+     210.  00:8986                      ;*******Controlando retraso*********    
+     211.  00:8986                      mover_enemigo_izquierda:
+     212.  00:8986  3A 4E 8A                ld a,(contador_retardo)
+     213.  00:8989  FE 14                   cp 20 ; si el retardo es 10 actialuzamos la pisición
+     214.  00:898B  CA 93 89                jp z,actualizar_enemigo_a_la_izquierda
+     215.  00:898E  3C                      inc a
+     216.  00:898F  32 4E 8A                ld (contador_retardo),a; si el retardo no es 10 incrementamos en 1 su valor
+     217.  00:8992  C9                      ret
+     218.  00:8993                      actualizar_enemigo_a_la_izquierda:
+     219.  00:8993  3A 48 8A                ld a,(enemigo_posicion_x); obetenemos el valor actual de la posicion x
+     220.  00:8996  D6 03                   sub 3 ; incrementamos en 1 el valor
+     221.  00:8998  32 48 8A                ld (enemigo_posicion_x), a ; se lo metemos al atributo
+     222.  00:899B                      
+     223.  00:899B                          ;****conrtolando animanción**
+     224.  00:899B                          ;ld a,6*4 ;le ponemos el patron mirando hacia la izquierda que es el 2
+     225.  00:899B                          ;ld (enemigo_patron),a;le cambiamos al patrón 4 (12 en headecimal)
+     226.  00:899B  3A 49 8A                ld a,(enemigo_esta_andado_o_no)
+     227.  00:899E  FE 01                   cp 1 ;si esta andado
+     228.  00:89A0  CC B6 89                call z, izquierda_no_andando ;le ponemos que no ande
+     229.  00:89A3  CD AB 89                call izquierda_andando ;sino está andado le ponemos que ande
+     230.  00:89A6                      
+     231.  00:89A6                          ;****contrlando retraso*****
+     232.  00:89A6  AF                      xor a
+     233.  00:89A7  32 4E 8A                ld (contador_retardo),a ;como el retardo ha sido 10 lo ponemos a 0
+     234.  00:89AA  C9                      ret
+     235.  00:89AB                      izquierda_andando:
+     236.  00:89AB  3E 18                   ld a,6*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     237.  00:89AD  32 4A 8A                ld (enemigo_patron),a
+     238.  00:89B0  3E 01                   ld a,1
+     239.  00:89B2  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     240.  00:89B5  C9                      ret
+     241.  00:89B6                      izquierda_no_andando:
+     242.  00:89B6  3E 1C                   ld a,7*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     243.  00:89B8  32 4A 8A                ld (enemigo_patron),a
+     244.  00:89BB  AF                      xor a
+     245.  00:89BC  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     246.  00:89BF  C9                      ret
+     247.  00:89C0                      
+     248.  00:89C0                      
+     249.  00:89C0                      
+     250.  00:89C0                      
+     251.  00:89C0                      
+     252.  00:89C0                      ;***************************
+     253.  00:89C0                      ;******Arriba**************
+     254.  00:89C0                      ;***************************
+     255.  00:89C0                      
+     256.  00:89C0                      
+     257.  00:89C0                      ;*****Controlando el retraso*************
+     258.  00:89C0                      mover_enemigo_arriba:
+     259.  00:89C0  3A 4E 8A                ld a,(contador_retardo)
+     260.  00:89C3  FE 0A                   cp 10 ; si el retardo es 10 actialuzamos la pisición
+     261.  00:89C5  CA CD 89                jp z,actualizar_enemigo_arriba
+     262.  00:89C8  3C                      inc a
+     263.  00:89C9  32 4E 8A                ld (contador_retardo),a; si el retardo no es 10 incrementamos en 1 su valor
+     264.  00:89CC  C9                      ret
+     265.  00:89CD                      
+     266.  00:89CD                      
+     267.  00:89CD                      actualizar_enemigo_arriba:
+     268.  00:89CD  3A 47 8A                ld a,(enemigo_posicion_y); obetenemos el valor actual de la posicion y
+     269.  00:89D0  D6 01                   sub 1 ; incrementamos en 1 el valor
+     270.  00:89D2  32 47 8A                ld (enemigo_posicion_y), a ; se lo metemos al atributo
+     271.  00:89D5                          ;miramos si esta adando para cambiarle el sprite
+     272.  00:89D5  3A 49 8A                ld a,(enemigo_esta_andado_o_no)
+     273.  00:89D8                      
+     274.  00:89D8                          ;*******Controlando el sprite*****
+     275.  00:89D8                          ;ld a,4*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     276.  00:89D8                          ;ld (enemigo_patron),a;ponemos al patrón 1
+     277.  00:89D8                          ;miramos si esta adando para cambiarle el sprite
+     278.  00:89D8  3A 49 8A                ld a,(enemigo_esta_andado_o_no)
+     279.  00:89DB  FE 01                   cp 1 ;si esta andado
+     280.  00:89DD  CA 2D 8A                jp z, abajo_no_andando ;le ponemos que no ande
+     281.  00:89E0  C3 22 8A                jp abajo_andando ;sino está andado le ponemos que ande
+     282.  00:89E3                      
+     283.  00:89E3                          ;******restraso animación*******
+     284.  00:89E3  AF                      xor a
+     285.  00:89E4  32 4E 8A                ld (contador_retardo),a ;como el retardo ha sido 10 lo ponemos a 0
+     286.  00:89E7  C9                      ret
+     287.  00:89E8                      arriba_andando:
+     288.  00:89E8  3E 10                   ld a,4*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     289.  00:89EA  32 4A 8A                ld (enemigo_patron),a
+     290.  00:89ED  3E 01                   ld a,1
+     291.  00:89EF  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     292.  00:89F2  C9                      ret
+     293.  00:89F3                      arriba_no_andando:
+     294.  00:89F3  3E 14                   ld a,5*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     295.  00:89F5  32 4A 8A                ld (enemigo_patron),a
+     296.  00:89F8  AF                      xor a
+     297.  00:89F9  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     298.  00:89FC  C9                      ret
+     299.  00:89FD                      
+     300.  00:89FD                      
+     301.  00:89FD                      
+     302.  00:89FD                      
+     303.  00:89FD                      
+     304.  00:89FD                      
+     305.  00:89FD                      
+     306.  00:89FD                      
+     307.  00:89FD                      
+     308.  00:89FD                      
+     309.  00:89FD                      ;***************************
+     310.  00:89FD                      ;******Abajo**************
+     311.  00:89FD                      ;***************************
+     312.  00:89FD                      
+     313.  00:89FD                      ;*****Controlando retraso****
+     314.  00:89FD                      mover_enemigo_abajo:
+     315.  00:89FD  3A 4E 8A                ld a,(contador_retardo)
+     316.  00:8A00  FE 0A                   cp 10 ; si el retardo es 10 actialuzamos la pisición
+     317.  00:8A02  CA 0A 8A                jp z,actualizar_enemigo_abajo
+     318.  00:8A05  3C                      inc a
+     319.  00:8A06  32 4E 8A                ld (contador_retardo),a; si el retardo no es 10 incrementamos en 1 su valor
+     320.  00:8A09  C9                      ret
+     321.  00:8A0A                      
+     322.  00:8A0A                      actualizar_enemigo_abajo:
+     323.  00:8A0A  3A 47 8A                ld a,(enemigo_posicion_y); obetenemos el valor actual de la posicion y
+     324.  00:8A0D  C6 01                   add 1 ; incrementamos en 1 el valor
+     325.  00:8A0F  32 47 8A                ld (enemigo_posicion_y), a ; se lo metemos al atributo
+     326.  00:8A12                      
+     327.  00:8A12                          ;***Controlando animación***
+     328.  00:8A12                          ;miramos si esta adando para cambiarle el sprite
+     329.  00:8A12  3A 49 8A                ld a,(enemigo_esta_andado_o_no)
+     330.  00:8A15  FE 01                   cp 1 ;si esta andado
+     331.  00:8A17  CA 2D 8A                jp z, abajo_no_andando ;le ponemos que no ande
+     332.  00:8A1A  C3 22 8A                jp abajo_andando ;sino está andado le ponemos que ande
+     333.  00:8A1D                      
+     334.  00:8A1D                          ;***Controlando retraso****
+     335.  00:8A1D  AF                      xor a
+     336.  00:8A1E  32 4E 8A                ld (contador_retardo),a ;como el retardo ha sido 10 lo ponemos a 0
+     337.  00:8A21                        
+     338.  00:8A21  C9                      ret
+     339.  00:8A22                      abajo_andando:
+     340.  00:8A22  3E 28                   ld a,10*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     341.  00:8A24  32 4A 8A                ld (enemigo_patron),a
+     342.  00:8A27  3E 01                   ld a,1
+     343.  00:8A29  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     344.  00:8A2C  C9                      ret
+     345.  00:8A2D                      abajo_no_andando:
+     346.  00:8A2D  3E 2C                   ld a,11*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+     347.  00:8A2F  32 4A 8A                ld (enemigo_patron),a
+     348.  00:8A32  AF                      xor a
+     349.  00:8A33  32 49 8A                ld (enemigo_esta_andado_o_no),a
+     350.  00:8A36  C9                      ret
+     351.  00:8A37                      
+     352.  00:8A37                      
+     353.  00:8A37                      incrementar_enemigo_posicion_x:
+     354.  00:8A37  CD 4D 89                call mover_enemigo_derecha
+     355.  00:8A3A  C9                      ret
+     356.  00:8A3B                      decrementa_enemigo_posicion_x:
+     357.  00:8A3B  CD 86 89                call mover_enemigo_izquierda
+     358.  00:8A3E  C9                      ret
+     359.  00:8A3F                      incrementar_enemigo_posicion_y:
+     360.  00:8A3F  CD FD 89                call mover_enemigo_abajo
+     361.  00:8A42  C9                      ret
+     362.  00:8A43                      decrementa_enemigo_posicion_y:
+     363.  00:8A43  CD C0 89                call mover_enemigo_arriba
+     364.  00:8A46  C9                      ret
+     365.  00:8A47                      
+     366.  00:8A47                      
+     367.  00:8A47                      
+     368.  00:8A47                      
+     369.  00:8A47                      
+     370.  00:8A47                      ;Definición de variables
+     371.  00:8A47  00                  enemigo_posicion_y: db 0
+     372.  00:8A48  00                  enemigo_posicion_x: db 0
+     373.  00:8A49  00                  enemigo_esta_andado_o_no: db 0
+     374.  00:8A4A                      
+     375.  00:8A4A  00                  enemigo_patron: db 0
+     376.  00:8A4B  00                  enemigo_color: db 0
+     377.  00:8A4C                      
+     378.  00:8A4C  01                  enemigo_ruta: db 1
+     379.  00:8A4D                      
+     380.  00:8A4D  00                  paso_permitido: db 0;0 no permitido, 1 si permitido
+     381.  00:8A4E  00                  contador_retardo: db 0
+     382.  00:8A4F  0A                  retardo: db 10
+     383.  00:8A50                      
+     414   00:8A50                      ;include "src/enemigo2.asm"
+     415   00:8A50                      include "src/contenedor.asm"
+       1.  00:8A50                      sprites_contedor:
+       2.  00:8A50                          ; 12-contenedor llamas 1
+       3.  00:8A50                          db 080h,0D8h,0DAh,0DBh,059h,05Fh,07Fh,03Fh
+       3.  00:8A50  80 D8 DA DB 59 5F 7F 3F 
+       4.  00:8A58                          db 07Fh,07Fh,07Fh,07Fh,07Fh,03Fh,018h,018h
+       4.  00:8A58  7F 7F 7F 7F 7F 3F 18 18 
+       5.  00:8A60                          db 006h,01Eh,05Ch,0DEh,0CEh,0CEh,0FEh,0FCh
+       5.  00:8A60  06 1E 5C DE CE CE FE FC 
+       6.  00:8A68                          db 0FEh,0FEh,0FEh,0FEh,0FEh,0FCh,018h,018h
+       6.  00:8A68  FE FE FE FE FE FC 18 18 
+       7.  00:8A70                          ; 13-contenedor llamas 2
+       8.  00:8A70                          db 000h,000h,000h,000h,000h,000h,000h,03Fh
+       8.  00:8A70  00 00 00 00 00 00 00 3F 
+       9.  00:8A78                          db 07Fh,07Fh,07Fh,07Fh,07Fh,03Fh,018h,018h
+       9.  00:8A78  7F 7F 7F 7F 7F 3F 18 18 
+      10.  00:8A80                          db 000h,000h,000h,000h,000h,000h,000h,0FCh
+      10.  00:8A80  00 00 00 00 00 00 00 FC 
+      11.  00:8A88                          db 0FEh,0FEh,0FEh,0FEh,0FEh,0FCh,018h,018h
+      11.  00:8A88  FE FE FE FE FE FC 18 18 
+      12.  00:8A90                      
+      13.  00:8A90                          
+      14.  00:8A90  00 (4)              atributos_contendor_sprite: ds 4,0
+      15.  00:8A94                      ;----------------------------VRAM UPDATE------------------------
+      16.  00:8A94                      volcar_sprite_contenedor_atributos_en_VRAM:
+      17.  00:8A94  21 90 8A                ld hl, atributos_contendor_sprite ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+      18.  00:8A97  11 08 1B                ld de, #1b00+8; Es el 3 patron de atributos, los 1 4 bytes el coche, los 2 4 bytes enemigos        
+      19.  00:8A9A  01 04 00                ld bc,4; bytes
+      20.  00:8A9D  CD 5C 00                call  LDIRVM ; Mira arriba, pone la explicación
+      21.  00:8AA0                      
+      22.  00:8AA0  C9                      ret
+      23.  00:8AA1                      
+      24.  00:8AA1                      inicializacion_variables_contendor_sprite:
+      25.  00:8AA1                          ;Para sprite 1
+      26.  00:8AA1  3E 01                   ld a,1
+      27.  00:8AA3  32 37 8B                ld (contenedor_posicion_y),a
+      28.  00:8AA6  3E 28                   ld a,40
+      29.  00:8AA8  32 38 8B                ld (contenedor_posicion_x),a
+      30.  00:8AAB  3E 30                   ld a, 12*4
+      31.  00:8AAD  32 39 8B                ld (contenedor_patron),a
+      32.  00:8AB0  3E 08                   ld a, 8
+      33.  00:8AB2  32 3A 8B                ld (contenedor_color),a
+      34.  00:8AB5  3E 00                   ld a,0
+      35.  00:8AB7  32 3B 8B                ld (contendor_andando_o_no),a
+      36.  00:8ABA  C9                      ret
+      37.  00:8ABB                      actualiza_atributos_de_contenedor_sprite:
+      38.  00:8ABB  DD 21 90 8A             ld ix,atributos_contendor_sprite
+      39.  00:8ABF                          ;para el sprite 1
+      40.  00:8ABF  3A 37 8B                ld a, (contenedor_posicion_y)
+      41.  00:8AC2  DD 77 00                ld (ix),a
+      42.  00:8AC5  3A 38 8B                ld a,(contenedor_posicion_x)
+      43.  00:8AC8  DD 77 01                ld (ix+1),a
+      44.  00:8ACB  3A 39 8B                ld a, (contenedor_patron)
+      45.  00:8ACE  DD 77 02                ld (ix+2),a
+      46.  00:8AD1  3A 3A 8B                ld a, (contenedor_color)
+      47.  00:8AD4  DD 77 03                ld (ix+3),a
+      48.  00:8AD7  C9                      ret
+      49.  00:8AD8                      incrementa_posicion_x_contedor:
+      50.  00:8AD8  3A 38 8B                ld a,(contenedor_posicion_x); obetenemos el valor actual de la posicion x
+      51.  00:8ADB  C6 01                   add 1; incrementamos en 1 el valor
+      52.  00:8ADD  32 38 8B                ld (contenedor_posicion_x), a ; se lo metemos al atributo
+      53.  00:8AE0                         
+      54.  00:8AE0                          ;Los sprites son el 12 y el 13
+      55.  00:8AE0                          ;miramos si esta adando para cambiarle el sprite
+      56.  00:8AE0  3A 3B 8B                ld a,(contendor_andando_o_no)
+      57.  00:8AE3  FE 01                   cp 1 ;si esta andado
+      58.  00:8AE5  CA EC 8A                jp z, contendor_abajo_andando ;le ponemos que no ande
+      59.  00:8AE8  C3 FB 8A                jp contendor_abajo_no_andando ;sino está andado le ponemos que ande
+      60.  00:8AEB  C9                      ret
+      61.  00:8AEC                      contendor_abajo_andando:
+      62.  00:8AEC  3E 30                   ld a,12*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+      63.  00:8AEE  32 39 8B                ld (contenedor_patron),a
+      64.  00:8AF1  AF                      xor a
+      65.  00:8AF2  32 3B 8B                ld (contendor_andando_o_no),a
+      66.  00:8AF5  3E 0B                   ld a, 11; color amarillo
+      67.  00:8AF7  32 3A 8B                ld (contenedor_color),a
+      68.  00:8AFA  C9                      ret
+      69.  00:8AFB                      contendor_abajo_no_andando:
+      70.  00:8AFB  3E 34                   ld a,13*4 ;le ponemos el patron mirando hacia la derecha que es el 3
+      71.  00:8AFD  32 39 8B                ld (contenedor_patron),a
+      72.  00:8B00  3E 01                   ld a,1
+      73.  00:8B02  32 3B 8B                ld (contendor_andando_o_no),a
+      74.  00:8B05  3E 08                   ld a, 8;color rojo
+      75.  00:8B07  32 3A 8B                ld (contenedor_color),a
+      76.  00:8B0A  C9                      ret
+      77.  00:8B0B                      seleccion_ruta_uno_contenedor:
+      78.  00:8B0B  3E 64                   ld a, 100
+      79.  00:8B0D  32 38 8B                ld (contenedor_posicion_x),a
+      80.  00:8B10  3E 96                   ld a, 150
+      81.  00:8B12  32 37 8B                ld (contenedor_posicion_y),a
+      82.  00:8B15  C9                      ret
+      83.  00:8B16                      seleccion_ruta_dos_contenedor:
+      84.  00:8B16  3E 64                   ld a, 100
+      85.  00:8B18  32 38 8B                ld (contenedor_posicion_x),a
+      86.  00:8B1B  3E 14                   ld a, 20
+      87.  00:8B1D  32 37 8B                ld (contenedor_posicion_y),a
+      88.  00:8B20  C9                      ret
+      89.  00:8B21                      seleccion_ruta_tres_contenedor:
+      90.  00:8B21  3E 64                   ld a, 100
+      91.  00:8B23  32 38 8B                ld (contenedor_posicion_x),a
+      92.  00:8B26  3E 00                   ld a, 0
+      93.  00:8B28  32 37 8B                ld (contenedor_posicion_y),a
+      94.  00:8B2B  C9                      ret
+      95.  00:8B2C                      seleccion_ruta_cuatro_contenedor:
+      96.  00:8B2C  3E 64                   ld a, 100
+      97.  00:8B2E  32 38 8B                ld (contenedor_posicion_x),a
+      98.  00:8B31  3E 0A                   ld a, 10
+      99.  00:8B33  32 37 8B                ld (contenedor_posicion_y),a
+     100.  00:8B36  C9                      ret
+     101.  00:8B37                      
+     102.  00:8B37                      
+     103.  00:8B37                      
+     104.  00:8B37                      
+     105.  00:8B37                      ;Definición de variables
+     106.  00:8B37  00                  contenedor_posicion_y: db 0
+     107.  00:8B38  00                  contenedor_posicion_x: db 0
+     108.  00:8B39  00                  contenedor_patron: db 0
+     109.  00:8B3A  00                  contenedor_color: db 0 ;aparillo es el 11 y rojo el 8
+     110.  00:8B3B  00                  contendor_andando_o_no: db 0
+     416   00:8B3C                      include "src/numeros.asm"
+       1.  00:8B3C                      sprites_numeros:
+       2.  00:8B3C                          ; El 1
+       3.  00:8B3C                          DB $00,$01,$03,$06,$0C,$00,$00,$00
+       3.  00:8B3C  00 01 03 06 0C 00 00 00 
+       4.  00:8B44                          DB $00,$00,$00,$00,$07,$00,$00,$00
+       4.  00:8B44  00 00 00 00 07 00 00 00 
+       5.  00:8B4C                          DB $00,$C0,$C0,$C0,$C0,$C0,$C0,$C0
+       5.  00:8B4C  00 C0 C0 C0 C0 C0 C0 C0 
+       6.  00:8B54                          DB $C0,$C0,$C0,$C0,$F8,$00,$00,$00
+       6.  00:8B54  C0 C0 C0 C0 F8 00 00 00 
+       7.  00:8B5C                      
+       8.  00:8B5C                          
+       9.  00:8B5C  00 (4)              atributos_numeros_sprite: ds 4,0
+      10.  00:8B60                      
+      11.  00:8B60                      
+      12.  00:8B60                      inicializacion_variables_numeros_sprite:
+      13.  00:8B60                          ;Para sprite 1
+      14.  00:8B60  3E 10                   ld a,#10
+      15.  00:8B62  32 9F 8B                ld (numeros_posicion_y),a
+      16.  00:8B65  3E 10                   ld a,#10
+      17.  00:8B67  32 A0 8B                ld (numeros_posicion_x),a
+      18.  00:8B6A  3E 18                   ld a, #18
+      19.  00:8B6C  32 A1 8B                ld (numeros_patron),a
+      20.  00:8B6F  3E 08                   ld a, #08
+      21.  00:8B71  32 A2 8B                ld (numeros_color),a
+      22.  00:8B74                      
+      23.  00:8B74                      
+      24.  00:8B74  C9                      ret
+      25.  00:8B75                      actualiza_atributos_de_numeros_sprite:
+      26.  00:8B75  DD 21 5C 8B             ld ix,atributos_numeros_sprite
+      27.  00:8B79                          ;para el sprite 1
+      28.  00:8B79  3A 9F 8B                ld a, (numeros_posicion_y)
+      29.  00:8B7C  DD 77 00                ld (ix),a
+      30.  00:8B7F  3A A0 8B                ld a,(numeros_posicion_x)
+      31.  00:8B82  DD 77 01                ld (ix+1),a
+      32.  00:8B85  3A A1 8B                ld a, (numeros_patron)
+      33.  00:8B88  DD 77 02                ld (ix+2),a
+      34.  00:8B8B  3A A2 8B                ld a, (numeros_color)
+      35.  00:8B8E  DD 77 03                ld (ix+3),a
+      36.  00:8B91  C9                      ret
+      37.  00:8B92                          
+      38.  00:8B92                      
+      39.  00:8B92                      
+      40.  00:8B92                      ;----------------------------VRAM UPDATE------------------------
+      41.  00:8B92                      volcar_sprite_numeros_atributos_en_VRAM:
+      42.  00:8B92  21 5C 8B                ld hl, atributos_numeros_sprite ; la rutina LDIRVM necesita haber cargado previamente la dirección de inicio de la RAM, para saber porqué he puesto 0000 fíjate este dibujo https://sites.google.com/site/multivac7/files-images/TMS9918_VRAMmap_G2_300dpi.png ,así es como está formado el VDP en screen 2
+      43.  00:8B95  11 0C 1B                ld de, #1b00+12; la rutina necesita haber cargado previamente con de la dirección de inicio de la VRAM          
+      44.  00:8B98  01 04 00                ld bc,4; bytes
+      45.  00:8B9B  CD 5C 00                call  LDIRVM ; Mira arriba, pone la explicación
+      46.  00:8B9E                      
+      47.  00:8B9E  C9                      ret
+      48.  00:8B9F                      
+      49.  00:8B9F                      
+      50.  00:8B9F                      ;Definición de variables
+      51.  00:8B9F  00                  numeros_posicion_y: db 0
+      52.  00:8BA0  00                  numeros_posicion_x: db 0
+      53.  00:8BA1  00                  numeros_patron: db 0
+      54.  00:8BA2  00                  numeros_color: db 0
+     417   00:8BA3                      
+     418   00:8BA3                      
+     419   00:8BA3                      
+     420   00:8BA3                      
+     421   00:8BA3                      ;Esta es la pantalla con la foto
+     422   00:8BA3                      tiles_screen1:
+     423   00:8BA3  (03AE)                  incbin "src/screens/screen1/screen1.bin.chr.plet5"
+     424   00:8F51                      color_screen1:
+     425   00:8F51  (0093)                  incbin "src/screens/screen1/screen1.bin.clr.plet5"
+     426   00:8FE4                      map_screen1: 
+     427   00:8FE4  (0128)                  incbin "src/screens/screen1/screen1.bin.plet5"
+     428   00:910C                      
+     429   00:910C                      
+     430   00:910C                      
+     431   00:910C                      ;Esta es la pantalla en el que el coche aparece abajo a la izquiera y pone comisaría
+     432   00:910C                      tiles_screen2:
+     433   00:910C  (0088)                  incbin "src/screens/screen2/screen2.bin.chr.plet5"
+     434   00:9194                      color_screen2:
+     435   00:9194  (0043)                  incbin "src/screens/screen2/screen2.bin.clr.plet5"
+     436   00:91D7                      map_screen2: 
+     437   00:91D7  (0094)                  incbin "src/screens/screen2/screen2.bin.plet5"
+     438   00:926B                      
+     439   00:926B                      
+     440   00:926B                      
+     441   00:926B                      ;En las siguientes pantallas utilizaremos los tiles de la pantalla 2
+     442   00:926B                      map_screen3: 
+     443   00:926B  (0050)                  incbin "src/screens/screen3/screen3.bin.plet5"
+     444   00:92BB                      map_screen4: 
+     445   00:92BB  (004D)                  incbin "src/screens/screen4/screen4.bin.plet5"
+     446   00:9308                      map_screen5: 
+     447   00:9308  (0074)                  incbin "src/screens/screen5/screen5.bin.plet5"
+     448   00:937C                      
+     449   00:937C                      
+     450   00:937C                      
+     451   00:937C                      
+     452   00:937C                      ;**********************************************/
+     453   00:937C                      ;*********VARIABLES DEL SISTEMA****************/
+     454   00:937C                      ;**********************************************/
+     455   00:937C                      
+     456   00:937C                      
+     457   00:937C  00                  screen_actual: db 0
+     458   00:937D                      
+     459   00:937D                      
+     460   00:937D  00 (768)            buffer_de_colsiones: ds 768 ;es el mapa o tabla de nombres de VRAM copiada aquí
+     461   00:967D                      
+     462   00:967D                      	include	"src/PT3_player.s"					;replayer de PT3
+       1.  00:967D                      		; --- PT3 REPLAYER WORKING ON ROM ---
+       2.  00:967D                      		; --- Can be assembled with asMSX ---
+       3.  00:967D                      		; --- ROM version: MSX-KUN        ---
+       4.  00:967D                      		; --- asMSX version 2: SapphiRe   ---
+       5.  00:967D                      
+       6.  00:967D                      ; Based on MSX full version of PT3 by Dioniso
+       7.  00:967D                      ;
+       8.  00:967D                      ; This version of the replayer can be used with any note table
+       9.  00:967D                      ; This version also allows the use of PT3 commands
+      10.  00:967D                      ; First 99 bytes of each PT3 module should be stripped off
+      11.  00:967D                      ;
+      12.  00:967D                      ; PLAY and PSG WRITE routines seperated to allow independent calls
+      13.  00:967D                      ;
+      14.  00:967D                      ; ROM LENGTH: 1549 bytes
+      15.  00:967D                      ; RAM LENGTH:  576 bytes
+      16.  00:967D                      
+      17.  00:967D                      
+      18.  00:967D                      
+      19.  00:967D                      ;SJASM version by BTV 2016
+      20.  00:967D                      
+      21.  00:967D                      
+      22.  00:967D                      		; --- CONSTANT VALUES DEFINITION ---
+      23.  00:967D                      
+      24.  00:967D                      ;ChannelsVars
+      25.  00:967D                      ;struc	CHNPRM
+      26.  00:967D                      ;reset group
+      27.  00:967D  (00:0000)           CHNPRM_PsInOr	equ 0	;RESB 1
+      28.  00:967D  (00:0001)           CHNPRM_PsInSm	equ 1	;RESB 1
+      29.  00:967D  (00:0002)           CHNPRM_CrAmSl	equ 2	;RESB 1
+      30.  00:967D  (00:0003)           CHNPRM_CrNsSl	equ 3	;RESB 1
+      31.  00:967D  (00:0004)           CHNPRM_CrEnSl	equ 4	;RESB 1
+      32.  00:967D  (00:0005)           CHNPRM_TSlCnt	equ 5	;RESB 1
+      33.  00:967D  (00:0006)           CHNPRM_CrTnSl	equ 6	;RESW 1
+      34.  00:967D  (00:0008)           CHNPRM_TnAcc	equ 8	;RESW 1
+      35.  00:967D  (00:000A)           CHNPRM_COnOff	equ 10	;RESB 1
+      36.  00:967D                      ;reset group
+      37.  00:967D                      
+      38.  00:967D  (00:000B)           CHNPRM_OnOffD	equ 11	;RESB 1
+      39.  00:967D                      
+      40.  00:967D                      ;IX for PTDECOD here [+12]
+      41.  00:967D  (00:000C)           CHNPRM_OffOnD	equ 12	;RESB 1
+      42.  00:967D  (00:000D)           CHNPRM_OrnPtr	equ 13	;RESW 1
+      43.  00:967D  (00:000F)           CHNPRM_SamPtr	equ 15	;RESW 1
+      44.  00:967D  (00:0011)           CHNPRM_NNtSkp	equ 17	;RESB 1
+      45.  00:967D  (00:0012)           CHNPRM_Note	equ 18	;RESB 1
+      46.  00:967D  (00:0013)           CHNPRM_SlToNt	equ 19	;RESB 1
+      47.  00:967D  (00:0014)           CHNPRM_Env_En	equ 20	;RESB 1
+      48.  00:967D  (00:0015)           CHNPRM_Flags	equ 21	;RESB 1
+      49.  00:967D                       ;Enabled - 0,SimpleGliss - 2
+      50.  00:967D  (00:0016)           CHNPRM_TnSlDl	equ 22	;RESB 1
+      51.  00:967D  (00:0017)           CHNPRM_TSlStp	equ 23	;RESW 1
+      52.  00:967D  (00:0019)           CHNPRM_TnDelt	equ 25	;RESW 1
+      53.  00:967D  (00:001B)           CHNPRM_NtSkCn	equ 27	;RESB 1
+      54.  00:967D  (00:001C)           CHNPRM_Volume	equ 28	;RESB 1
+      55.  00:967D  (00:001D)           CHNPRM_Size	equ 29	;RESB 1
+      56.  00:967D                      ;endstruc
+      57.  00:967D                      
+      58.  00:967D                      ;struc	AR
+      59.  00:967D  (00:0000)           AR_TonA		equ 0	;RESW 1
+      60.  00:967D  (00:0002)           AR_TonB		equ 2	;RESW 1
+      61.  00:967D  (00:0004)           AR_TonC		equ 4	;RESW 1
+      62.  00:967D  (00:0006)           AR_Noise	equ 6	;RESB 1
+      63.  00:967D  (00:0007)           AR_Mixer	equ 7	;RESB 1
+      64.  00:967D  (00:0008)           AR_AmplA	equ 8	;RESB 1
+      65.  00:967D  (00:0009)           AR_AmplB	equ 9	;RESB 1
+      66.  00:967D  (00:000A)           AR_AmplC	equ 10	;RESB 1
+      67.  00:967D  (00:000B)           AR_Env		equ 11	;RESW 1
+      68.  00:967D  (00:000D)           AR_EnvTp	equ 13	;RESB 1
+      69.  00:967D                      ;endstruc
+      70.  00:967D                      
+      71.  00:967D                      		; --- CODE STARTS HERE ---
+      72.  00:967D                      
+      73.  00:967D  21 00 F0            CHECKLP:	LD	HL,PT3_SETUP
+      74.  00:9680  CB FE               		SET	7,[HL]
+      75.  00:9682  CB 46               		BIT	0,[HL]
+      76.  00:9684  C8                  		RET	Z
+      77.  00:9685  E1                  		POP	HL
+      78.  00:9686  21 7A F0            		LD	HL,DelyCnt
+      79.  00:9689  34                  		INC	[HL]
+      80.  00:968A  21 3E F0            		LD	HL,ChanA+CHNPRM_NtSkCn
+      81.  00:968D  34                  		INC	[HL]
+      82.  00:968E  AF                  PT3_MUTE:	XOR	A
+      83.  00:968F  67                  		LD	H,A
+      84.  00:9690  6F                  		LD	L,A
+      85.  00:9691  32 48 F1            		LD	[AYREGS+AR_AmplA],A
+      86.  00:9694  22 49 F1            		LD	[AYREGS+AR_AmplB],HL
+      87.  00:9697  C3 E0 9B            		JP	ROUT_A0
+      88.  00:969A                      
+      89.  00:969A                      PT3_INIT:	;HL - AddressOfModule - 100
+      90.  00:969A  22 01 F0            		LD [PT3_MODADDR],HL
+      91.  00:969D  E5                  		PUSH HL
+      92.  00:969E  11 64 00            		LD DE,100
+      93.  00:96A1  19                  		ADD HL,DE
+      94.  00:96A2  7E                  		LD A,[HL]
+      95.  00:96A3  32 1C F0            		LD [PT3_Delay],A
+      96.  00:96A6  E5                  		PUSH HL
+      97.  00:96A7  DD E1               		POP IX
+      98.  00:96A9  19                  		ADD HL,DE
+      99.  00:96AA  22 03 F0            		LD [PT3_CrPsPtr],HL
+     100.  00:96AD  DD 5E 02            		LD E,[IX+102-100]
+     101.  00:96B0  19                  		ADD HL,DE
+     102.  00:96B1  23                  		INC HL
+     103.  00:96B2  22 18 F0            		LD [PT3_LPosPtr],HL
+     104.  00:96B5  D1                  		POP DE
+     105.  00:96B6  DD 6E 03            		LD L,[IX+103-100]
+     106.  00:96B9  DD 66 04            		LD H,[IX+104-100]
+     107.  00:96BC  19                  		ADD HL,DE
+     108.  00:96BD  22 1A F0            		LD [PT3_PatsPtr],HL
+     109.  00:96C0  21 A9 00            		LD HL,169
+     110.  00:96C3  19                  		ADD HL,DE
+     111.  00:96C4  22 07 F0            		LD [PT3_OrnPtrs],HL
+     112.  00:96C7  21 69 00            		LD HL,105
+     113.  00:96CA  19                  		ADD HL,DE
+     114.  00:96CB  22 05 F0            		LD [PT3_SAMPTRS],HL
+     115.  00:96CE  21 00 F0            		LD HL,PT3_SETUP
+     116.  00:96D1  CB BE               		RES 7,[HL]
+     117.  00:96D3                      
+     118.  00:96D3                      		; --- note table data depacker ---
+     119.  00:96D3                      		; Depacks first 12 tones of each tone table
+     120.  00:96D3                      
+     121.  00:96D3  11 54 9C            		LD DE,T_PACK
+     122.  00:96D6  01 B1 F1            		LD BC,T1_+(2*49)-1
+     123.  00:96D9  1A                  .TP_0:		LD A,[DE]
+     124.  00:96DA  13                  		INC DE
+     125.  00:96DB  FE 1E               		CP 15*2
+     126.  00:96DD  30 06               		JR NC,.TP_1
+     127.  00:96DF  67                  		LD H,A
+     128.  00:96E0  1A                  		LD A,[DE]
+     129.  00:96E1  6F                  		LD L,A
+     130.  00:96E2  13                  		INC DE
+     131.  00:96E3  18 07               		JR .TP_2
+     132.  00:96E5  D5                  .TP_1:		PUSH DE
+     133.  00:96E6  16 00               		LD D,0
+     134.  00:96E8  5F                  		LD E,A
+     135.  00:96E9  19                  		ADD HL,DE
+     136.  00:96EA  19                  		ADD HL,DE
+     137.  00:96EB  D1                  		POP DE
+     138.  00:96EC  7C                  .TP_2:		LD A,H
+     139.  00:96ED  02                  		LD [BC],A
+     140.  00:96EE  0B                  		DEC BC
+     141.  00:96EF  7D                  		LD A,L
+     142.  00:96F0  02                  		LD [BC],A
+     143.  00:96F1  0B                  		DEC BC
+     144.  00:96F2  D6 F0               		SUB $F0
+     145.  00:96F4  20 E3               		JR NZ,.TP_0
+     146.  00:96F6                      
+     147.  00:96F6                      		; --- INITIALIZE PT3 VARIABLES ---
+     148.  00:96F6  21 23 F0            		LD HL,VARS
+     149.  00:96F9  77                  		LD [HL],A
+     150.  00:96FA  11 24 F0            		LD DE,VARS+1
+     151.  00:96FD  01 2C 01            		LD BC,VAR0END-VARS-1
+     152.  00:9700  ED B0               		LDIR
+     153.  00:9702                      
+     154.  00:9702  3C                  		INC A
+     155.  00:9703  32 7A F0            		LD [DelyCnt],A
+     156.  00:9706  21 01 F0            		LD HL,$F001 ;H - CHNPRM_Volume, L - CHNPRM_NtSkCn
+     157.  00:9709  22 3E F0            		LD [ChanA+CHNPRM_NtSkCn],HL
+     158.  00:970C  22 5B F0            		LD [ChanB+CHNPRM_NtSkCn],HL
+     159.  00:970F  22 78 F0            		LD [ChanC+CHNPRM_NtSkCn],HL
+     160.  00:9712                      
+     161.  00:9712  21 50 9C            		LD HL,EMPTYSAMORN
+     162.  00:9715  22 12 F0            		LD [PT3_AdInPtA],HL ;ptr to zero
+     163.  00:9718  22 30 F0            		LD [ChanA+CHNPRM_OrnPtr],HL ;ornament 0 is "0,1,0"
+     164.  00:971B  22 4D F0            		LD [ChanB+CHNPRM_OrnPtr],HL ;in all versions from
+     165.  00:971E  22 6A F0            		LD [ChanC+CHNPRM_OrnPtr],HL ;3.xx to 3.6x and VTII
+     166.  00:9721                      
+     167.  00:9721  22 32 F0            		LD [ChanA+CHNPRM_SamPtr],HL ;S1 There is no default
+     168.  00:9724  22 4F F0            		LD [ChanB+CHNPRM_SamPtr],HL ;S2 sample in PT3, so, you
+     169.  00:9727  22 6C F0            		LD [ChanC+CHNPRM_SamPtr],HL ;S3 can comment S1,2,3; see
+     170.  00:972A                      					    ;also EMPTYSAMORN comment
+     171.  00:972A                      
+     172.  00:972A                      		; --- NOTE TABLE CREATOR (c) Ivan Roshin, adapted by SapphiRe ---
+     173.  00:972A  DD 7E FF            		LD A,[IX+99-100] ;TONE TABLE NUMBER
+     174.  00:972D  17                  		RLA
+     175.  00:972E  E6 07               		AND 7
+     176.  00:9730  21 00 9C            		LD HL,NT_DATA
+     177.  00:9733  D5                  		PUSH DE
+     178.  00:9734  50                  		LD D,B		; ld d,0 (bc is 0000 after LDIR)
+     179.  00:9735  87                  		ADD A,A
+     180.  00:9736  5F                  		LD E,A
+     181.  00:9737  19                  		ADD HL,DE	; hl -> init of correct note table data
+     182.  00:9738  5E                  		LD E,[HL]
+     183.  00:9739  23                  		INC HL
+     184.  00:973A  CB 3B               		SRL E
+     185.  00:973C  9F                  		SBC A,A
+     186.  00:973D  E6 A7               		AND $A7			;$00 (NOP) or $A7 (AND A)
+     187.  00:973F  32 21 F0            		LD [PT3_NTL3],A		; CORRECT INSTRUCTION, DEPENDS OF SELECTED TABLE
+     188.  00:9742  3E C9               		LD A,$C9		; RET CODE
+     189.  00:9744  32 22 F0            		LD [PT3_NTL3+1],A	; RET PLACED
+     190.  00:9747  EB                  		EX DE,HL
+     191.  00:9748  C1                  		POP BC ;BC=T1_
+     192.  00:9749  09                  		ADD HL,BC
+     193.  00:974A                      
+     194.  00:974A  1A                  		LD A,[DE]                           
+     195.  00:974B                      
+     196.  00:974B  01 10 9C            		LD BC,T_
+     197.  00:974E  81                  		ADD A,C
+     198.  00:974F  4F                  		LD C,A
+     199.  00:9750  88                  		ADC A,B
+     200.  00:9751                      
+     201.  00:9751  91                  		SUB C
+     202.  00:9752  47                  		LD B,A
+     203.  00:9753  C5                  		PUSH BC
+     204.  00:9754  11 80 F0            		LD DE,NT_
+     205.  00:9757  D5                  		PUSH DE
+     206.  00:9758                      
+     207.  00:9758  06 0C               		LD B,12
+     208.  00:975A  C5                  .L1:		PUSH BC
+     209.  00:975B  4E                  		LD C,[HL]
+     210.  00:975C  23                  		INC HL
+     211.  00:975D  E5                  		PUSH HL
+     212.  00:975E  46                  		LD B,[HL]
+     213.  00:975F                      
+     214.  00:975F  D5                  		PUSH DE
+     215.  00:9760  EB                  		EX DE,HL
+     216.  00:9761  11 17 00            		LD DE,23
+     217.  00:9764  DD 26 08            		db $DD,$26,$08	;LD XH,8
+     218.  00:9767                      
+     219.  00:9767  CB 38               .L2:		SRL B
+     220.  00:9769  CB 19               		RR C
+     221.  00:976B  CD 21 F0            .L3:		CALL PT3_NTL3	;AND A or NOP
+     222.  00:976E  79                  		LD A,C
+     223.  00:976F  8A                  		ADC A,D	;=ADC 0
+     224.  00:9770  77                  		LD [HL],A
+     225.  00:9771  23                  		INC HL
+     226.  00:9772  78                  		LD A,B
+     227.  00:9773  8A                  		ADC A,D
+     228.  00:9774  77                  		LD [HL],A
+     229.  00:9775  19                  		ADD HL,DE
+     230.  00:9776  DD 25               		db $DD,$25	;DEC XH
+     231.  00:9778  20 ED               		JR NZ,.L2
+     232.  00:977A                      
+     233.  00:977A  D1                  		POP DE
+     234.  00:977B  13                  		INC DE
+     235.  00:977C  13                  		INC DE
+     236.  00:977D  E1                  		POP HL
+     237.  00:977E  23                  		INC HL
+     238.  00:977F  C1                  		POP BC
+     239.  00:9780  10 D8               		DJNZ .L1
+     240.  00:9782                      
+     241.  00:9782  E1                  		POP HL
+     242.  00:9783  D1                  		POP DE
+     243.  00:9784                      
+     244.  00:9784  7B                  		LD A,E
+     245.  00:9785  D5                  		PUSH DE
+     246.  00:9786  11 1C 9C            		LD DE,TCOLD_1
+     247.  00:9789  BB                  		CP E
+     248.  00:978A  D1                  		POP DE
+     249.  00:978B  20 05               		JR NZ,.CORR_1
+     250.  00:978D  3E FD               		LD A,$FD
+     251.  00:978F  32 AE F0            		LD [NT_+$2E],A
+     252.  00:9792                      
+     253.  00:9792  1A                  .CORR_1:	LD A,[DE]
+     254.  00:9793  A7                  		AND A
+     255.  00:9794  28 11               		JR Z,.TC_EXIT
+     256.  00:9796  1F                  		RRA
+     257.  00:9797  F5                  		PUSH AF
+     258.  00:9798  87                  		ADD A,A
+     259.  00:9799  4F                  		LD C,A
+     260.  00:979A  09                  		ADD HL,BC
+     261.  00:979B  F1                  		POP AF
+     262.  00:979C  30 02               		JR NC,.CORR_2
+     263.  00:979E  35                  		DEC [HL]
+     264.  00:979F  35                  		DEC [HL]
+     265.  00:97A0  34                  .CORR_2:	INC [HL]
+     266.  00:97A1  A7                  		AND A
+     267.  00:97A2  ED 42               		SBC HL,BC
+     268.  00:97A4  13                  		INC DE
+     269.  00:97A5  18 EB               		JR .CORR_1
+     270.  00:97A7                      
+     271.  00:97A7                      .TC_EXIT:	;POP AF
+     272.  00:97A7                      
+     273.  00:97A7                      		; --- CREATE PT3 VOLUME TABLE (c) Ivan Roshin, adapted by SapphiRe ---
+     274.  00:97A7  21 11 00            		ld	hl,$11
+     275.  00:97AA  54                  		ld	d,h
+     276.  00:97AB  5C                  		ld	e,h
+     277.  00:97AC  DD 21 50 F1         		ld	IX,VT_+16
+     278.  00:97B0  06 0F               		ld	b,15
+     279.  00:97B2  E5                  .INITV1:	push	hl
+     280.  00:97B3  19                  		add	hl,de
+     281.  00:97B4  EB                  		ex	de,hl
+     282.  00:97B5  ED 62               		sbc	hl,hl
+     283.  00:97B7  48                  		ld	c,b
+     284.  00:97B8  06 10               		ld	b,16
+     285.  00:97BA  7D                  .INITV2:	ld	a,l
+     286.  00:97BB  17                  		rla
+     287.  00:97BC  7C                  		ld	a,h
+     288.  00:97BD  CE 00               		adc	a,0
+     289.  00:97BF  DD 77 00            		ld	[ix],a
+     290.  00:97C2  DD 23               		inc	ix
+     291.  00:97C4  19                  		add	hl,de
+     292.  00:97C5  10 F3               		djnz	.INITV2
+     293.  00:97C7  E1                  		pop	hl
+     294.  00:97C8  7B                  		ld	a,e
+     295.  00:97C9  FE 77               		cp	$77
+     296.  00:97CB  20 01               		jr	nz,.INITV3
+     297.  00:97CD  1C                  		inc	e
+     298.  00:97CE  41                  .INITV3:	ld	b,c
+     299.  00:97CF  10 E1               		djnz	.INITV1
+     300.  00:97D1                      
+     301.  00:97D1  C9                  		RET
+     302.  00:97D2                      
+     303.  00:97D2                      		;pattern decoder
+     304.  00:97D2  DD 36 08 00         PD_OrSm:	LD [IX+(CHNPRM_Env_En-12)],0
+     305.  00:97D6  CD 5C 99            		CALL SETORN
+     306.  00:97D9  0A                  		LD A,[BC]
+     307.  00:97DA  03                  		INC BC
+     308.  00:97DB  0F                  		RRCA
+     309.  00:97DC                      
+     310.  00:97DC  87                  PD_SAM:		ADD A,A
+     311.  00:97DD  5F                  PD_SAM_:	LD E,A
+     312.  00:97DE  16 00               		LD D,0
+     313.  00:97E0  2A 05 F0            		LD HL,[PT3_SAMPTRS]
+     314.  00:97E3  19                  		ADD HL,DE
+     315.  00:97E4  5E                  		LD E,[HL]
+     316.  00:97E5  23                  		INC HL
+     317.  00:97E6  56                  		LD D,[HL]
+     318.  00:97E7  2A 01 F0            		LD HL,[PT3_MODADDR]
+     319.  00:97EA  19                  		ADD HL,DE
+     320.  00:97EB  DD 75 03            		LD [IX+(CHNPRM_SamPtr-12)],L
+     321.  00:97EE  DD 74 04            		LD [IX+(CHNPRM_SamPtr+1-12)],H
+     322.  00:97F1  18 41               		JR PD_LOOP
+     323.  00:97F3                      
+     324.  00:97F3  07                  PD_VOL:		RLCA
+     325.  00:97F4  07                  		RLCA
+     326.  00:97F5  07                  		RLCA
+     327.  00:97F6  07                  		RLCA
+     328.  00:97F7  DD 77 10            		LD [IX+(CHNPRM_Volume-12)],A
+     329.  00:97FA  18 3B               		JR PD_LP2
+     330.  00:97FC                      	
+     331.  00:97FC  DD 77 08            PD_EOff:	LD [IX+(CHNPRM_Env_En-12)],A
+     332.  00:97FF  DD 77 F4            		LD [IX+(CHNPRM_PsInOr-12)],A
+     333.  00:9802  18 33               		JR PD_LP2
+     334.  00:9804                      
+     335.  00:9804  3D                  PD_SorE:	DEC A
+     336.  00:9805  20 07               		JR NZ,PD_ENV
+     337.  00:9807  0A                  		LD A,[BC]
+     338.  00:9808  03                  		INC BC
+     339.  00:9809  DD 77 05            		LD [IX+(CHNPRM_NNtSkp-12)],A
+     340.  00:980C  18 29               		JR PD_LP2
+     341.  00:980E                      
+     342.  00:980E  CD 40 99            PD_ENV:		CALL SETENV
+     343.  00:9811  18 24               		JR PD_LP2
+     344.  00:9813                      
+     345.  00:9813  CD 5C 99            PD_ORN:		CALL SETORN
+     346.  00:9816  18 1C               		JR PD_LOOP
+     347.  00:9818                             
+     348.  00:9818  DD 77 08            PD_ESAM:	LD [IX+(CHNPRM_Env_En-12)],A
+     349.  00:981B  DD 77 F4            		LD [IX+(CHNPRM_PsInOr-12)],A
+     350.  00:981E  C4 40 99            		CALL NZ,SETENV
+     351.  00:9821  0A                  		LD A,[BC]
+     352.  00:9822  03                  		INC BC
+     353.  00:9823  18 B8               		JR PD_SAM_
+     354.  00:9825                      
+     355.  00:9825  DD 7E 06            PTDECOD:	LD A,[IX+(CHNPRM_Note-12)]
+     356.  00:9828  32 0F F0            		LD [PT3_PrNote],A
+     357.  00:982B  DD 6E FA            		LD L,[IX+(CHNPRM_CrTnSl-12)]
+     358.  00:982E  DD 66 FB            		LD H,[IX+(CHNPRM_CrTnSl+1-12)]
+     359.  00:9831  22 10 F0            		LD [PT3_PrSlide],HL
+     360.  00:9834                      
+     361.  00:9834  11 10 20            PD_LOOP:	LD DE,$2010
+     362.  00:9837  0A                  PD_LP2:		LD A,[BC]
+     363.  00:9838  03                  		INC BC
+     364.  00:9839  83                  		ADD A,E
+     365.  00:983A  38 96               		JR C,PD_OrSm
+     366.  00:983C  82                  		ADD A,D
+     367.  00:983D  28 4A               		JR Z,PD_FIN
+     368.  00:983F  38 9B               		JR C,PD_SAM
+     369.  00:9841  83                  		ADD A,E
+     370.  00:9842  28 25               		JR Z,PD_REL
+     371.  00:9844  38 AD               		JR C,PD_VOL
+     372.  00:9846  83                  		ADD A,E
+     373.  00:9847  28 B3               		JR Z,PD_EOff
+     374.  00:9849  38 B9               		JR C,PD_SorE
+     375.  00:984B  C6 60               		ADD A,96
+     376.  00:984D  38 20               		JR C,PD_NOTE
+     377.  00:984F  83                  		ADD A,E
+     378.  00:9850  38 C1               		JR C,PD_ORN
+     379.  00:9852  82                  		ADD A,D
+     380.  00:9853  38 0F               		JR C,PD_NOIS
+     381.  00:9855  83                  		ADD A,E
+     382.  00:9856  38 C0               		JR C,PD_ESAM
+     383.  00:9858  87                  		ADD A,A
+     384.  00:9859  5F                  		LD E,A
+     385.  00:985A  21 95 78            		LD HL,(SPCCOMS+$DF20) % 65536	; Adapted from original Speccy version (saves 6 bytes)
+     386.  00:985D  19                  		ADD HL,DE
+     387.  00:985E  5E                  		LD E,[HL]
+     388.  00:985F  23                  		INC HL
+     389.  00:9860  56                  		LD D,[HL]
+     390.  00:9861  D5                  		PUSH DE
+     391.  00:9862  18 D0               		JR PD_LOOP
+     392.  00:9864                      
+     393.  00:9864  32 7E F0            PD_NOIS:	LD [Ns_Base],A
+     394.  00:9867  18 CE               		JR PD_LP2
+     395.  00:9869                      
+     396.  00:9869  DD CB 09 86         PD_REL:		RES 0,[IX+(CHNPRM_Flags-12)]
+     397.  00:986D  18 08               		JR PD_RES
+     398.  00:986F                      	
+     399.  00:986F  DD 77 06            PD_NOTE:	LD [IX+(CHNPRM_Note-12)],A
+     400.  00:9872  DD CB 09 C6         		SET 0,[IX+(CHNPRM_Flags-12)]
+     401.  00:9876  AF                  		XOR A
+     402.  00:9877                      
+     403.  00:9877  ED 73 09 F0         PD_RES:		LD [PT3_PDSP],SP
+     404.  00:987B  DD F9               		LD SP,IX
+     405.  00:987D  67                  		LD H,A
+     406.  00:987E  6F                  		LD L,A
+     407.  00:987F  E5                  		PUSH HL
+     408.  00:9880  E5                  		PUSH HL
+     409.  00:9881  E5                  		PUSH HL
+     410.  00:9882  E5                  		PUSH HL
+     411.  00:9883  E5                  		PUSH HL
+     412.  00:9884  E5                  		PUSH HL
+     413.  00:9885  ED 7B 09 F0         		LD SP,[PT3_PDSP]
+     414.  00:9889                      
+     415.  00:9889  DD 7E 05            PD_FIN:		LD A,[IX+(CHNPRM_NNtSkp-12)]
+     416.  00:988C  DD 77 0F            		LD [IX+(CHNPRM_NtSkCn-12)],A
+     417.  00:988F  C9                  		RET
+     418.  00:9890                      
+     419.  00:9890  DD CB 09 96         C_PORTM:	RES 2,[IX+(CHNPRM_Flags-12)]
+     420.  00:9894  0A                  		LD A,[BC]
+     421.  00:9895  03                  		INC BC
+     422.  00:9896                      		;SKIP PRECALCULATED TONE DELTA [BECAUSE
+     423.  00:9896                      		;CANNOT BE RIGHT AFTER PT3 COMPILATION]
+     424.  00:9896  03                  		INC BC
+     425.  00:9897  03                  		INC BC
+     426.  00:9898  DD 77 0A            		LD [IX+(CHNPRM_TnSlDl-12)],A
+     427.  00:989B  DD 77 F9            		LD [IX+(CHNPRM_TSlCnt-12)],A
+     428.  00:989E  11 80 F0            		LD DE,NT_
+     429.  00:98A1  DD 7E 06            		LD A,[IX+(CHNPRM_Note-12)]
+     430.  00:98A4  DD 77 07            		LD [IX+(CHNPRM_SlToNt-12)],A
+     431.  00:98A7  87                  		ADD A,A
+     432.  00:98A8  6F                  		LD L,A
+     433.  00:98A9  26 00               		LD H,0
+     434.  00:98AB  19                  		ADD HL,DE
+     435.  00:98AC  7E                  		LD A,[HL]
+     436.  00:98AD  23                  		INC HL
+     437.  00:98AE  66                  		LD H,[HL]
+     438.  00:98AF  6F                  		LD L,A
+     439.  00:98B0  E5                  		PUSH HL
+     440.  00:98B1  3A 0F F0            		LD A,[PT3_PrNote]
+     441.  00:98B4  DD 77 06            		LD [IX+(CHNPRM_Note-12)],A
+     442.  00:98B7  87                  		ADD A,A
+     443.  00:98B8  6F                  		LD L,A
+     444.  00:98B9  26 00               		LD H,0
+     445.  00:98BB  19                  		ADD HL,DE
+     446.  00:98BC  5E                  		LD E,[HL]
+     447.  00:98BD  23                  		INC HL
+     448.  00:98BE  56                  		LD D,[HL]
+     449.  00:98BF  E1                  		POP HL
+     450.  00:98C0  ED 52               		SBC HL,DE
+     451.  00:98C2  DD 75 0D            		LD [IX+(CHNPRM_TnDelt-12)],L
+     452.  00:98C5  DD 74 0E            		LD [IX+(CHNPRM_TnDelt+1-12)],H
+     453.  00:98C8  ED 5B 10 F0         		LD DE,[PT3_PrSlide]
+     454.  00:98CC  DD 73 FA            		LD [IX+(CHNPRM_CrTnSl-12)],E
+     455.  00:98CF  DD 72 FB            		LD [IX+(CHNPRM_CrTnSl+1-12)],D
+     456.  00:98D2  0A                  		LD A,[BC] ;SIGNED TONE STEP
+     457.  00:98D3  03                  		INC BC
+     458.  00:98D4  08                  		EX AF,AF'
+     459.  00:98D5  0A                  		LD A,[BC]
+     460.  00:98D6  03                  		INC BC
+     461.  00:98D7  A7                  		AND A
+     462.  00:98D8  28 01               		JR Z,.NOSIG
+     463.  00:98DA  EB                  		EX DE,HL
+     464.  00:98DB  ED 52               .NOSIG:	SBC HL,DE
+     465.  00:98DD  F2 E5 98            		JP P,SET_STP
+     466.  00:98E0  2F                  		CPL
+     467.  00:98E1  08                  		EX AF,AF'
+     468.  00:98E2  ED 44               		NEG
+     469.  00:98E4  08                  		EX AF,AF'
+     470.  00:98E5  DD 77 0C            SET_STP:	LD [IX+(CHNPRM_TSlStp+1-12)],A
+     471.  00:98E8  08                  		EX AF,AF'
+     472.  00:98E9  DD 77 0B            		LD [IX+(CHNPRM_TSlStp-12)],A
+     473.  00:98EC  DD 36 FE 00         		LD [IX+(CHNPRM_COnOff-12)],0
+     474.  00:98F0  C9                  		RET
+     475.  00:98F1                      
+     476.  00:98F1  DD CB 09 D6         C_GLISS:	SET 2,[IX+(CHNPRM_Flags-12)]
+     477.  00:98F5  0A                  		LD A,[BC]
+     478.  00:98F6  03                  		INC BC
+     479.  00:98F7  DD 77 0A            		LD [IX+(CHNPRM_TnSlDl-12)],A
+     480.  00:98FA  DD 77 F9            		LD [IX+(CHNPRM_TSlCnt-12)],A
+     481.  00:98FD  0A                  		LD A,[BC]
+     482.  00:98FE  03                  		INC BC
+     483.  00:98FF  08                  		EX AF,AF'
+     484.  00:9900  0A                  		LD A,[BC]
+     485.  00:9901  03                  		INC BC
+     486.  00:9902  18 E1               		JR SET_STP
+     487.  00:9904                      
+     488.  00:9904  0A                  C_SMPOS:	LD A,[BC]
+     489.  00:9905  03                  		INC BC
+     490.  00:9906  DD 77 F5            		LD [IX+(CHNPRM_PsInSm-12)],A
+     491.  00:9909  C9                  		RET
+     492.  00:990A                      
+     493.  00:990A  0A                  C_ORPOS:	LD A,[BC]
+     494.  00:990B  03                  		INC BC
+     495.  00:990C  DD 77 F4            		LD [IX+(CHNPRM_PsInOr-12)],A
+     496.  00:990F  C9                  		RET
+     497.  00:9910                      
+     498.  00:9910  0A                  C_VIBRT:	LD A,[BC]
+     499.  00:9911  03                  		INC BC
+     500.  00:9912  DD 77 FF            		LD [IX+(CHNPRM_OnOffD-12)],A
+     501.  00:9915  DD 77 FE            		LD [IX+(CHNPRM_COnOff-12)],A
+     502.  00:9918  0A                  		LD A,[BC]
+     503.  00:9919  03                  		INC BC
+     504.  00:991A  DD 77 00            		LD [IX+(CHNPRM_OffOnD-12)],A
+     505.  00:991D  AF                  		XOR A
+     506.  00:991E  DD 77 F9            		LD [IX+(CHNPRM_TSlCnt-12)],A
+     507.  00:9921  DD 77 FA            		LD [IX+(CHNPRM_CrTnSl-12)],A
+     508.  00:9924  DD 77 FB            		LD [IX+(CHNPRM_CrTnSl+1-12)],A
+     509.  00:9927  C9                  		RET
+     510.  00:9928                      
+     511.  00:9928  0A                  C_ENGLS:	LD A,[BC]
+     512.  00:9929  03                  		INC BC
+     513.  00:992A  32 1E F0            		LD [PT3_Env_Del],A
+     514.  00:992D  32 7D F0            		LD [CurEDel],A
+     515.  00:9930  0A                  		LD A,[BC]
+     516.  00:9931  03                  		INC BC
+     517.  00:9932  6F                  		LD L,A
+     518.  00:9933  0A                  		LD A,[BC]
+     519.  00:9934  03                  		INC BC
+     520.  00:9935  67                  		LD H,A
+     521.  00:9936  22 1F F0            		LD [PT3_ESldAdd],HL
+     522.  00:9939  C9                  		RET
+     523.  00:993A                      
+     524.  00:993A  0A                  C_DELAY:	LD A,[BC]
+     525.  00:993B  03                  		INC BC
+     526.  00:993C  32 1C F0            		LD [PT3_Delay],A
+     527.  00:993F  C9                  		RET
+     528.  00:9940                      	
+     529.  00:9940  DD 73 08            SETENV:		LD [IX+(CHNPRM_Env_En-12)],E
+     530.  00:9943  32 4D F1            		LD [AYREGS+AR_EnvTp],A
+     531.  00:9946  0A                  		LD A,[BC]
+     532.  00:9947  03                  		INC BC
+     533.  00:9948  67                  		LD H,A
+     534.  00:9949  0A                  		LD A,[BC]
+     535.  00:994A  03                  		INC BC
+     536.  00:994B  6F                  		LD L,A
+     537.  00:994C  22 4E F1            		LD [EnvBase],HL
+     538.  00:994F  AF                  		XOR A
+     539.  00:9950  DD 77 F4            		LD [IX+(CHNPRM_PsInOr-12)],A
+     540.  00:9953  32 7D F0            		LD [CurEDel],A
+     541.  00:9956  67                  		LD H,A
+     542.  00:9957  6F                  		LD L,A
+     543.  00:9958  22 7B F0            		LD [CurESld],HL
+     544.  00:995B  C9                  C_NOP:		RET
+     545.  00:995C                      
+     546.  00:995C  87                  SETORN:		ADD A,A
+     547.  00:995D  5F                  		LD E,A
+     548.  00:995E  16 00               		LD D,0
+     549.  00:9960  DD 72 F4            		LD [IX+(CHNPRM_PsInOr-12)],D
+     550.  00:9963  2A 07 F0            		LD HL,[PT3_OrnPtrs]
+     551.  00:9966  19                  		ADD HL,DE
+     552.  00:9967  5E                  		LD E,[HL]
+     553.  00:9968  23                  		INC HL
+     554.  00:9969  56                  		LD D,[HL]
+     555.  00:996A  2A 01 F0            		LD HL,[PT3_MODADDR]
+     556.  00:996D  19                  		ADD HL,DE
+     557.  00:996E  DD 75 01            		LD [IX+(CHNPRM_OrnPtr-12)],L
+     558.  00:9971  DD 74 02            		LD [IX+(CHNPRM_OrnPtr+1-12)],H
+     559.  00:9974  C9                  		RET
+     560.  00:9975                      
+     561.  00:9975                      		;ALL 16 ADDRESSES TO PROTECT FROM BROKEN PT3 MODULES
+     562.  00:9975  5B 99               SPCCOMS:	dw C_NOP
+     563.  00:9977  F1 98               		dw C_GLISS
+     564.  00:9979  90 98               		dw C_PORTM
+     565.  00:997B  04 99               		dw C_SMPOS
+     566.  00:997D  0A 99               		dw C_ORPOS
+     567.  00:997F  10 99               		dw C_VIBRT
+     568.  00:9981  5B 99               		dw C_NOP
+     569.  00:9983  5B 99               		dw C_NOP
+     570.  00:9985  28 99               		dw C_ENGLS
+     571.  00:9987  3A 99               		dw C_DELAY
+     572.  00:9989  5B 99               		dw C_NOP
+     573.  00:998B  5B 99               		dw C_NOP
+     574.  00:998D  5B 99               		dw C_NOP
+     575.  00:998F  5B 99               		dw C_NOP
+     576.  00:9991  5B 99               		dw C_NOP
+     577.  00:9993  5B 99               		dw C_NOP
+     578.  00:9995                      
+     579.  00:9995  AF                  CHREGS:		XOR A
+     580.  00:9996  32 4A F1            		LD [AYREGS+AR_AmplC],A
+     581.  00:9999  DD CB 15 46         		BIT 0,[IX+CHNPRM_Flags]
+     582.  00:999D  E5                  		PUSH HL
+     583.  00:999E  CA C4 9A            		JP Z,.CH_EXIT
+     584.  00:99A1  ED 73 0B F0         		LD [PT3_CSP],SP
+     585.  00:99A5  DD 6E 0D            		LD L,[IX+CHNPRM_OrnPtr]
+     586.  00:99A8  DD 66 0E            		LD H,[IX+CHNPRM_OrnPtr+1]
+     587.  00:99AB  F9                  		LD SP,HL
+     588.  00:99AC  D1                  		POP DE
+     589.  00:99AD  67                  		LD H,A
+     590.  00:99AE  DD 7E 00            		LD A,[IX+CHNPRM_PsInOr]
+     591.  00:99B1  6F                  		LD L,A
+     592.  00:99B2  39                  		ADD HL,SP
+     593.  00:99B3  3C                  		INC A
+     594.  00:99B4  BA                  		CP D
+     595.  00:99B5  38 01               		JR C,.CH_ORPS
+     596.  00:99B7  7B                  		LD A,E
+     597.  00:99B8  DD 77 00            .CH_ORPS:	LD [IX+CHNPRM_PsInOr],A
+     598.  00:99BB  DD 7E 12            		LD A,[IX+CHNPRM_Note]
+     599.  00:99BE  86                  		ADD A,[HL]
+     600.  00:99BF  F2 C3 99            		JP P,.CH_NTP
+     601.  00:99C2  AF                  		XOR A
+     602.  00:99C3  FE 60               .CH_NTP:	CP 96
+     603.  00:99C5  38 02               		JR C,.CH_NOK
+     604.  00:99C7  3E 5F               		LD A,95
+     605.  00:99C9  87                  .CH_NOK:	ADD A,A
+     606.  00:99CA  08                  		EX AF,AF'
+     607.  00:99CB  DD 6E 0F            		LD L,[IX+CHNPRM_SamPtr]
+     608.  00:99CE  DD 66 10            		LD H,[IX+CHNPRM_SamPtr+1]
+     609.  00:99D1  F9                  		LD SP,HL
+     610.  00:99D2  D1                  		POP DE
+     611.  00:99D3  26 00               		LD H,0
+     612.  00:99D5  DD 7E 01            		LD A,[IX+CHNPRM_PsInSm]
+     613.  00:99D8  47                  		LD B,A
+     614.  00:99D9  87                  		ADD A,A
+     615.  00:99DA  87                  		ADD A,A
+     616.  00:99DB  6F                  		LD L,A
+     617.  00:99DC  39                  		ADD HL,SP
+     618.  00:99DD  F9                  		LD SP,HL
+     619.  00:99DE  78                  		LD A,B
+     620.  00:99DF  3C                  		INC A
+     621.  00:99E0  BA                  		CP D
+     622.  00:99E1  38 01               		JR C,.CH_SMPS
+     623.  00:99E3  7B                  		LD A,E
+     624.  00:99E4  DD 77 01            .CH_SMPS:	LD [IX+CHNPRM_PsInSm],A
+     625.  00:99E7  C1                  		POP BC
+     626.  00:99E8  E1                  		POP HL
+     627.  00:99E9  DD 5E 08            		LD E,[IX+CHNPRM_TnAcc]
+     628.  00:99EC  DD 56 09            		LD D,[IX+CHNPRM_TnAcc+1]
+     629.  00:99EF  19                  		ADD HL,DE
+     630.  00:99F0  CB 70               		BIT 6,B
+     631.  00:99F2  28 06               		JR Z,.CH_NOAC
+     632.  00:99F4  DD 75 08            		LD [IX+CHNPRM_TnAcc],L
+     633.  00:99F7  DD 74 09            		LD [IX+CHNPRM_TnAcc+1],H
+     634.  00:99FA  EB                  .CH_NOAC:	EX DE,HL
+     635.  00:99FB  08                  		EX AF,AF'
+     636.  00:99FC  6F                  		LD L,A
+     637.  00:99FD  26 00               		LD H,0
+     638.  00:99FF  31 80 F0            		LD SP,NT_
+     639.  00:9A02  39                  		ADD HL,SP
+     640.  00:9A03  F9                  		LD SP,HL
+     641.  00:9A04  E1                  		POP HL
+     642.  00:9A05  19                  		ADD HL,DE
+     643.  00:9A06  DD 5E 06            		LD E,[IX+CHNPRM_CrTnSl]
+     644.  00:9A09  DD 56 07            		LD D,[IX+CHNPRM_CrTnSl+1]
+     645.  00:9A0C  19                  		ADD HL,DE
+     646.  00:9A0D  ED 7B 0B F0         		LD SP,[PT3_CSP]
+     647.  00:9A11  E3                  		EX [SP],HL
+     648.  00:9A12  AF                  		XOR A
+     649.  00:9A13  DD B6 05            		OR [IX+CHNPRM_TSlCnt]
+     650.  00:9A16  28 3E               		JR Z,.CH_AMP
+     651.  00:9A18  DD 35 05            		DEC [IX+CHNPRM_TSlCnt]
+     652.  00:9A1B  20 39               		JR NZ,.CH_AMP
+     653.  00:9A1D  DD 7E 16            		LD A,[IX+CHNPRM_TnSlDl]
+     654.  00:9A20  DD 77 05            		LD [IX+CHNPRM_TSlCnt],A
+     655.  00:9A23  DD 6E 17            		LD L,[IX+CHNPRM_TSlStp]
+     656.  00:9A26  DD 66 18            		LD H,[IX+CHNPRM_TSlStp+1]
+     657.  00:9A29  7C                  		LD A,H
+     658.  00:9A2A  19                  		ADD HL,DE
+     659.  00:9A2B  DD 75 06            		LD [IX+CHNPRM_CrTnSl],L
+     660.  00:9A2E  DD 74 07            		LD [IX+CHNPRM_CrTnSl+1],H
+     661.  00:9A31  DD CB 15 56         		BIT 2,[IX+CHNPRM_Flags]
+     662.  00:9A35  20 1F               		JR NZ,.CH_AMP
+     663.  00:9A37  DD 5E 19            		LD E,[IX+CHNPRM_TnDelt]
+     664.  00:9A3A  DD 56 1A            		LD D,[IX+CHNPRM_TnDelt+1]
+     665.  00:9A3D  A7                  		AND A
+     666.  00:9A3E  28 01               		JR Z,.CH_STPP
+     667.  00:9A40  EB                  		EX DE,HL
+     668.  00:9A41  ED 52               .CH_STPP:	SBC HL,DE
+     669.  00:9A43  FA 56 9A            		JP M,.CH_AMP
+     670.  00:9A46  DD 7E 13            		LD A,[IX+CHNPRM_SlToNt]
+     671.  00:9A49  DD 77 12            		LD [IX+CHNPRM_Note],A
+     672.  00:9A4C  AF                  		XOR A
+     673.  00:9A4D  DD 77 05            		LD [IX+CHNPRM_TSlCnt],A
+     674.  00:9A50  DD 77 06            		LD [IX+CHNPRM_CrTnSl],A
+     675.  00:9A53  DD 77 07            		LD [IX+CHNPRM_CrTnSl+1],A
+     676.  00:9A56  DD 7E 02            .CH_AMP:	LD A,[IX+CHNPRM_CrAmSl]
+     677.  00:9A59  CB 79               		BIT 7,C
+     678.  00:9A5B  28 13               		JR Z,.CH_NOAM
+     679.  00:9A5D  CB 71               		BIT 6,C
+     680.  00:9A5F  28 07               		JR Z,.CH_AMIN
+     681.  00:9A61  FE 0F               		CP 15
+     682.  00:9A63  28 0B               		JR Z,.CH_NOAM
+     683.  00:9A65  3C                  		INC A
+     684.  00:9A66  18 05               		JR .CH_SVAM
+     685.  00:9A68  FE F1               .CH_AMIN:	CP -15
+     686.  00:9A6A  28 04               		JR Z,.CH_NOAM
+     687.  00:9A6C  3D                  		DEC A
+     688.  00:9A6D  DD 77 02            .CH_SVAM:	LD [IX+CHNPRM_CrAmSl],A
+     689.  00:9A70  6F                  .CH_NOAM:	LD L,A
+     690.  00:9A71  78                  		LD A,B
+     691.  00:9A72  E6 0F               		AND 15
+     692.  00:9A74  85                  		ADD A,L
+     693.  00:9A75  F2 79 9A            		JP P,.CH_APOS
+     694.  00:9A78  AF                  		XOR A
+     695.  00:9A79  FE 10               .CH_APOS:	CP 16
+     696.  00:9A7B  38 02               		JR C,.CH_VOL
+     697.  00:9A7D  3E 0F               		LD A,15
+     698.  00:9A7F  DD B6 1C            .CH_VOL:	OR [IX+CHNPRM_Volume]
+     699.  00:9A82  6F                  		LD L,A
+     700.  00:9A83  26 00               		LD H,0
+     701.  00:9A85  11 40 F1            		LD DE,VT_
+     702.  00:9A88  19                  		ADD HL,DE
+     703.  00:9A89  7E                  		LD A,[HL]
+     704.  00:9A8A  CB 41               .CH_ENV:	BIT 0,C
+     705.  00:9A8C  20 03               		JR NZ,.CH_NOEN
+     706.  00:9A8E  DD B6 14            		OR [IX+CHNPRM_Env_En]
+     707.  00:9A91  32 4A F1            .CH_NOEN:	LD [AYREGS+AR_AmplC],A
+     708.  00:9A94  CB 78               		BIT 7,B
+     709.  00:9A96  79                  		LD A,C
+     710.  00:9A97  28 19               		JR Z,.NO_ENSL
+     711.  00:9A99  17                  		RLA
+     712.  00:9A9A  17                  		RLA
+     713.  00:9A9B  CB 2F               		SRA A
+     714.  00:9A9D  CB 2F               		SRA A
+     715.  00:9A9F  CB 2F               		SRA A
+     716.  00:9AA1  DD 86 04            		ADD A,[IX+CHNPRM_CrEnSl] ;SEE COMMENT BELOW
+     717.  00:9AA4  CB 68               		BIT 5,B
+     718.  00:9AA6  28 03               		JR Z,.NO_ENAC
+     719.  00:9AA8  DD 77 04            		LD [IX+CHNPRM_CrEnSl],A
+     720.  00:9AAB  21 1D F0            .NO_ENAC:	LD HL,PT3_AddToEn
+     721.  00:9AAE  86                  		ADD A,[HL] ;BUG IN PT3 - NEED WORD HERE.
+     722.  00:9AAF                      			   ;FIX IT IN NEXT VERSION?
+     723.  00:9AAF  77                  		LD [HL],A
+     724.  00:9AB0  18 0E               		JR .CH_MIX
+     725.  00:9AB2  1F                  .NO_ENSL:	RRA
+     726.  00:9AB3  DD 86 03            		ADD A,[IX+CHNPRM_CrNsSl]
+     727.  00:9AB6  32 7F F0            		LD [AddToNs],A
+     728.  00:9AB9  CB 68               		BIT 5,B
+     729.  00:9ABB  28 03               		JR Z,.CH_MIX
+     730.  00:9ABD  DD 77 03            		LD [IX+CHNPRM_CrNsSl],A
+     731.  00:9AC0  78                  .CH_MIX:	LD A,B
+     732.  00:9AC1  1F                  		RRA
+     733.  00:9AC2  E6 48               		AND $48
+     734.  00:9AC4  21 47 F1            .CH_EXIT:	LD HL,AYREGS+AR_Mixer
+     735.  00:9AC7  B6                  		OR [HL]
+     736.  00:9AC8  0F                  		RRCA
+     737.  00:9AC9  77                  		LD [HL],A
+     738.  00:9ACA  E1                  		POP HL
+     739.  00:9ACB  AF                  		XOR A
+     740.  00:9ACC  DD B6 0A            		OR [IX+CHNPRM_COnOff]
+     741.  00:9ACF  C8                  		RET Z
+     742.  00:9AD0  DD 35 0A            		DEC [IX+CHNPRM_COnOff]
+     743.  00:9AD3  C0                  		RET NZ
+     744.  00:9AD4  DD AE 15            		XOR [IX+CHNPRM_Flags]
+     745.  00:9AD7  DD 77 15            		LD [IX+CHNPRM_Flags],A
+     746.  00:9ADA  1F                  		RRA
+     747.  00:9ADB  DD 7E 0B            		LD A,[IX+CHNPRM_OnOffD]
+     748.  00:9ADE  38 03               		JR C,.CH_ONDL
+     749.  00:9AE0  DD 7E 0C            		LD A,[IX+CHNPRM_OffOnD]
+     750.  00:9AE3  DD 77 0A            .CH_ONDL:	LD [IX+CHNPRM_COnOff],A
+     751.  00:9AE6  C9                  		RET
+     752.  00:9AE7                      
+     753.  00:9AE7  AF                  PT3_PLAY:	XOR A
+     754.  00:9AE8  32 1D F0            		LD [PT3_AddToEn],A
+     755.  00:9AEB  32 47 F1            		LD [AYREGS+AR_Mixer],A
+     756.  00:9AEE  3D                  		DEC A
+     757.  00:9AEF  32 4D F1            		LD [AYREGS+AR_EnvTp],A
+     758.  00:9AF2  21 7A F0            		LD HL,DelyCnt
+     759.  00:9AF5  35                  		DEC [HL]
+     760.  00:9AF6  C2 7D 9B            		JP NZ,.PL2
+     761.  00:9AF9  21 3E F0            		LD HL,ChanA+CHNPRM_NtSkCn
+     762.  00:9AFC  35                  		DEC [HL]
+     763.  00:9AFD  20 4E               		JR NZ,.PL1B
+     764.  00:9AFF  ED 4B 12 F0         		LD BC,[PT3_AdInPtA]
+     765.  00:9B03  0A                  		LD A,[BC]
+     766.  00:9B04  A7                  		AND A
+     767.  00:9B05  20 3B               		JR NZ,.PL1A
+     768.  00:9B07  57                  		LD D,A
+     769.  00:9B08  32 7E F0            		LD [Ns_Base],A
+     770.  00:9B0B  2A 03 F0            		LD HL,[PT3_CrPsPtr]
+     771.  00:9B0E  23                  		INC HL
+     772.  00:9B0F  7E                  		LD A,[HL]
+     773.  00:9B10  3C                  		INC A
+     774.  00:9B11  20 08               		JR NZ,.PLNLP
+     775.  00:9B13  CD 7D 96            		CALL CHECKLP
+     776.  00:9B16  2A 18 F0            		LD HL,[PT3_LPosPtr]
+     777.  00:9B19  7E                  		LD A,[HL]
+     778.  00:9B1A  3C                  		INC A
+     779.  00:9B1B  22 03 F0            .PLNLP:	LD [PT3_CrPsPtr],HL
+     780.  00:9B1E  3D                  		DEC A
+     781.  00:9B1F  87                  		ADD A,A
+     782.  00:9B20  5F                  		LD E,A
+     783.  00:9B21  CB 12               		RL D
+     784.  00:9B23  2A 1A F0            		LD HL,[PT3_PatsPtr]
+     785.  00:9B26  19                  		ADD HL,DE
+     786.  00:9B27  ED 5B 01 F0         		LD DE,[PT3_MODADDR]
+     787.  00:9B2B  ED 73 0D F0         		LD [PT3_PSP],SP
+     788.  00:9B2F  F9                  		LD SP,HL
+     789.  00:9B30  E1                  		POP HL
+     790.  00:9B31  19                  		ADD HL,DE
+     791.  00:9B32  44                  		LD B,H
+     792.  00:9B33  4D                  		LD C,L
+     793.  00:9B34  E1                  		POP HL
+     794.  00:9B35  19                  		ADD HL,DE
+     795.  00:9B36  22 14 F0            		LD [PT3_AdInPtB],HL
+     796.  00:9B39  E1                  		POP HL
+     797.  00:9B3A  19                  		ADD HL,DE
+     798.  00:9B3B  22 16 F0            		LD [PT3_AdInPtC],HL
+     799.  00:9B3E  ED 7B 0D F0         		LD SP,[PT3_PSP]
+     800.  00:9B42                      
+     801.  00:9B42  DD 21 2F F0         .PL1A:		LD IX,ChanA+12
+     802.  00:9B46  CD 25 98            		CALL PTDECOD
+     803.  00:9B49  ED 43 12 F0         		LD [PT3_AdInPtA],BC
+     804.  00:9B4D                      
+     805.  00:9B4D  21 5B F0            .PL1B:		LD HL,ChanB+CHNPRM_NtSkCn
+     806.  00:9B50  35                  		DEC [HL]
+     807.  00:9B51  20 0F               		JR NZ,.PL1C
+     808.  00:9B53  DD 21 4C F0         		LD IX,ChanB+12
+     809.  00:9B57  ED 4B 14 F0         		LD BC,[PT3_AdInPtB]
+     810.  00:9B5B  CD 25 98            		CALL PTDECOD
+     811.  00:9B5E  ED 43 14 F0         		LD [PT3_AdInPtB],BC
+     812.  00:9B62                      
+     813.  00:9B62  21 78 F0            .PL1C:		LD HL,ChanC+CHNPRM_NtSkCn
+     814.  00:9B65  35                  		DEC [HL]
+     815.  00:9B66  20 0F               		JR NZ,.PL1D
+     816.  00:9B68  DD 21 69 F0         		LD IX,ChanC+12
+     817.  00:9B6C  ED 4B 16 F0         		LD BC,[PT3_AdInPtC]
+     818.  00:9B70  CD 25 98            		CALL PTDECOD
+     819.  00:9B73  ED 43 16 F0         		LD [PT3_AdInPtC],BC
+     820.  00:9B77                      
+     821.  00:9B77  3A 1C F0            .PL1D:		LD A,[PT3_Delay]
+     822.  00:9B7A  32 7A F0            		LD [DelyCnt],A
+     823.  00:9B7D                      
+     824.  00:9B7D  DD 21 23 F0         .PL2:		LD IX,ChanA
+     825.  00:9B81  2A 40 F1            		LD HL,[AYREGS+AR_TonA]
+     826.  00:9B84  CD 95 99            		CALL CHREGS
+     827.  00:9B87  22 40 F1            		LD [AYREGS+AR_TonA],HL
+     828.  00:9B8A  3A 4A F1            		LD A,[AYREGS+AR_AmplC]
+     829.  00:9B8D  32 48 F1            		LD [AYREGS+AR_AmplA],A
+     830.  00:9B90  DD 21 40 F0         		LD IX,ChanB
+     831.  00:9B94  2A 42 F1            		LD HL,[AYREGS+AR_TonB]
+     832.  00:9B97  CD 95 99            		CALL CHREGS
+     833.  00:9B9A  22 42 F1            		LD [AYREGS+AR_TonB],HL
+     834.  00:9B9D  3A 4A F1            		LD A,[AYREGS+AR_AmplC]
+     835.  00:9BA0  32 49 F1            		LD [AYREGS+AR_AmplB],A
+     836.  00:9BA3  DD 21 5D F0         		LD IX,ChanC
+     837.  00:9BA7  2A 44 F1            		LD HL,[AYREGS+AR_TonC]
+     838.  00:9BAA  CD 95 99            		CALL CHREGS
+     839.  00:9BAD  22 44 F1            		LD [AYREGS+AR_TonC],HL
+     840.  00:9BB0                      
+     841.  00:9BB0  2A 7E F0            		LD HL,[Ns_Base_AddToNs]
+     842.  00:9BB3  7C                  		LD A,H
+     843.  00:9BB4  85                  		ADD A,L
+     844.  00:9BB5  32 46 F1            		LD [AYREGS+AR_Noise],A
+     845.  00:9BB8                      
+     846.  00:9BB8  3A 1D F0            		LD A,[PT3_AddToEn]
+     847.  00:9BBB  5F                  		LD E,A
+     848.  00:9BBC  87                  		ADD A,A
+     849.  00:9BBD  9F                  		SBC A,A
+     850.  00:9BBE  57                  		LD D,A
+     851.  00:9BBF  2A 4E F1            		LD HL,[EnvBase]
+     852.  00:9BC2  19                  		ADD HL,DE
+     853.  00:9BC3  ED 5B 7B F0         		LD DE,[CurESld]
+     854.  00:9BC7  19                  		ADD HL,DE
+     855.  00:9BC8  22 4B F1            		LD [AYREGS+AR_Env],HL
+     856.  00:9BCB                      
+     857.  00:9BCB  AF                  		XOR A
+     858.  00:9BCC  21 7D F0            		LD HL,CurEDel
+     859.  00:9BCF  B6                  		OR [HL]
+     860.  00:9BD0  C8                  		RET Z
+     861.  00:9BD1  35                  		DEC [HL]
+     862.  00:9BD2  C0                  		RET NZ
+     863.  00:9BD3  3A 1E F0            		LD A,[PT3_Env_Del]
+     864.  00:9BD6  77                  		LD [HL],A
+     865.  00:9BD7  2A 1F F0            		LD HL,[PT3_ESldAdd]
+     866.  00:9BDA  19                  		ADD HL,DE
+     867.  00:9BDB  22 7B F0            		LD [CurESld],HL
+     868.  00:9BDE  C9                  		RET
+     869.  00:9BDF                      
+     870.  00:9BDF  AF                  PT3_ROUT:	XOR A
+     871.  00:9BE0                      	
+     872.  00:9BE0                      ROUT_A0:	; --- FIXES BITS 6 AND 7 OF MIXER ---
+     873.  00:9BE0  21 47 F1            		LD	HL,AYREGS+AR_Mixer
+     874.  00:9BE3  CB FE               		set	7,[hl]
+     875.  00:9BE5  CB B6               		res	6,[hl]
+     876.  00:9BE7                      
+     877.  00:9BE7  0E A0               		LD C,$A0
+     878.  00:9BE9  21 40 F1            		LD HL,AYREGS
+     879.  00:9BEC  ED 79               .LOUT:		OUT [C],A
+     880.  00:9BEE  0C                  		INC C
+     881.  00:9BEF  ED A3               		OUTI 
+     882.  00:9BF1  0D                  		DEC C
+     883.  00:9BF2  3C                  		INC A
+     884.  00:9BF3  FE 0D               		CP 13
+     885.  00:9BF5  20 F5               		JR NZ,.LOUT
+     886.  00:9BF7  ED 79               		OUT [C],A
+     887.  00:9BF9  7E                  		LD A,[HL]
+     888.  00:9BFA  A7                  		AND A
+     889.  00:9BFB  F8                  		RET M
+     890.  00:9BFC  0C                  		INC C
+     891.  00:9BFD  ED 79               		OUT [C],A
+     892.  00:9BFF  C9                  		RET
+     893.  00:9C00                      
+     894.  00:9C00  64                  NT_DATA:	db (T_NEW_0-T1_)*2
+     895.  00:9C01  2A                  		db TCNEW_0-T_
+     896.  00:9C02  65                  		db (T_OLD_0-T1_)*2+1
+     897.  00:9C03  00                  		db TCOLD_0-T_
+     898.  00:9C04  01                  		db (T_NEW_1-T1_)*2+1
+     899.  00:9C05  0C                  		db TCNEW_1-T_
+     900.  00:9C06  01                  		db (T_OLD_1-T1_)*2+1
+     901.  00:9C07  0C                  		db TCOLD_1-T_
+     902.  00:9C08  94                  		db (T_NEW_2-T1_)*2
+     903.  00:9C09  35                  		db TCNEW_2-T_
+     904.  00:9C0A  30                  		db (T_OLD_2-T1_)*2
+     905.  00:9C0B  0E                  		db TCOLD_2-T_
+     906.  00:9C0C  60                  		db (T_NEW_3-T1_)*2
+     907.  00:9C0D  20                  		db TCNEW_3-T_
+     908.  00:9C0E  60                  		db (T_OLD_3-T1_)*2
+     909.  00:9C0F  21                  		db TCOLD_3-T_
+     910.  00:9C10                      
+     911.  00:9C10                      T_:
+     912.  00:9C10                      
+     913.  00:9C10                      TCOLD_0:	db $00+1,$04+1,$08+1,$0A+1,$0C+1,$0E+1,$12+1,$14+1
+     913.  00:9C10  01 05 09 0B 0D 0F 13 15 
+     914.  00:9C18  19 25 3D 00         		db $18+1,$24+1,$3C+1,0
+     915.  00:9C1C                      TCNEW_1:	
+     916.  00:9C1C  5D 00               TCOLD_1:	db $5C+1,0
+     917.  00:9C1E                      TCOLD_2:	db $30+1,$36+1,$4C+1,$52+1,$5E+1,$70+1,$82,$8C,$9C
+     917.  00:9C1E  31 37 4D 53 5F 71 82 8C 9C 
+     918.  00:9C27                      		db $9E,$A0,$A6,$A8,$AA,$AC,$AE,$AE,0
+     918.  00:9C27  9E A0 A6 A8 AA AC AE AE 00 
+     919.  00:9C30  57                  TCNEW_3:	db $56+1
+     920.  00:9C31                      TCOLD_3:	db $1E+1,$22+1,$24+1,$28+1,$2C+1,$2E+1,$32+1,$BE+1,0
+     920.  00:9C31  1F 23 25 29 2D 2F 33 BF 00 
+     921.  00:9C3A                      TCNEW_0:	db $1C+1,$20+1,$22+1,$26+1,$2A+1,$2C+1,$30+1,$54+1
+     921.  00:9C3A  1D 21 23 27 2B 2D 31 55 
+     922.  00:9C42  BD BF 00            		db $BC+1,$BE+1,0
+     923.  00:9C45                      TCNEW_2:	db $1A+1,$20+1,$24+1,$28+1,$2A+1,$3A+1,$4C+1,$5E+1
+     923.  00:9C45  1B 21 25 29 2B 3B 4D 5F 
+     924.  00:9C4D  BB BD BF            		db $BA+1,$BC+1,$BE+1
+     925.  00:9C50                      
+     926.  00:9C50  00 01 00 90         EMPTYSAMORN: 	db 0,1,0,$90 ;delete $90 if you don't need default sample
+     927.  00:9C54                      
+     928.  00:9C54                      T_PACK:		; First 12 values of tone tables (packed)
+     929.  00:9C54  0D                  		db ($06EC*2)/256
+     930.  00:9C55  D8                  		db #d8
+     931.  00:9C56  69                  		db $0755-$06EC
+     932.  00:9C57  70                  		db $07C5-$0755
+     933.  00:9C58  76                  		db $083B-$07C5
+     934.  00:9C59  7D                  		db $08B8-$083B
+     935.  00:9C5A  85                  		db $093D-$08B8
+     936.  00:9C5B  8D                  		db $09CA-$093D
+     937.  00:9C5C  95                  		db $0A5F-$09CA
+     938.  00:9C5D  9D                  		db $0AFC-$0A5F
+     939.  00:9C5E  A8                  		db $0BA4-$0AFC
+     940.  00:9C5F  B1                  		db $0C55-$0BA4
+     941.  00:9C60  BB                  		db $0D10-$0C55
+     942.  00:9C61  0C                  		db ($066D*2)/256
+     943.  00:9C62  DA                  		db #da
+     944.  00:9C63  62                  		db $06CF-$066D
+     945.  00:9C64  68                  		db $0737-$06CF
+     946.  00:9C65  6D                  		db $07A4-$0737
+     947.  00:9C66  75                  		db $0819-$07A4
+     948.  00:9C67  7B                  		db $0894-$0819
+     949.  00:9C68  83                  		db $0917-$0894
+     950.  00:9C69  8A                  		db $09A1-$0917
+     951.  00:9C6A  92                  		db $0A33-$09A1
+     952.  00:9C6B  9C                  		db $0ACF-$0A33
+     953.  00:9C6C  A4                  		db $0B73-$0ACF
+     954.  00:9C6D  AF                  		db $0C22-$0B73
+     955.  00:9C6E  B8                  		db $0CDA-$0C22
+     956.  00:9C6F  0E                  		db ($0704*2)/256
+     957.  00:9C70  08                  		db #08
+     958.  00:9C71  6A                  		db $076E-$0704
+     959.  00:9C72  72                  		db $07E0-$076E
+     960.  00:9C73  78                  		db $0858-$07E0
+     961.  00:9C74  7E                  		db $08D6-$0858
+     962.  00:9C75  86                  		db $095C-$08D6
+     963.  00:9C76  90                  		db $09EC-$095C
+     964.  00:9C77  96                  		db $0A82-$09EC
+     965.  00:9C78  A0                  		db $0B22-$0A82
+     966.  00:9C79  AA                  		db $0BCC-$0B22
+     967.  00:9C7A  B4                  		db $0C80-$0BCC
+     968.  00:9C7B  BE                  		db $0D3E-$0C80
+     969.  00:9C7C  0F                  		db ($07E0*2)/256
+     970.  00:9C7D  C0                  		db #c0
+     971.  00:9C7E  78                  		db $0858-$07E0
+     972.  00:9C7F  88                  		db $08E0-$0858
+     973.  00:9C80  80                  		db $0960-$08E0
+     974.  00:9C81  90                  		db $09F0-$0960
+     975.  00:9C82  98                  		db $0A88-$09F0
+     976.  00:9C83  A0                  		db $0B28-$0A88
+     977.  00:9C84  B0                  		db $0BD8-$0B28
+     978.  00:9C85  A8                  		db $0C80-$0BD8
+     979.  00:9C86  E0                  		db $0D60-$0C80
+     980.  00:9C87  B0                  		db $0E10-$0D60
+     981.  00:9C88  E8                  		db $0EF8-$0E10
+     982.  00:9C89                      
+     983.  00:9C89                      
+     984.  00:9C89                      
+     985.  00:9C89                      
+     986.  00:9C89                      
+     987.  00:9C89                      
+     988.  00:9C89                      
+     989.  00:9C89                      
+     990.  00:9C89                      
+     991.  00:9C89                      
+     992.  00:9C89                      
+     993.  00:9C89                      
+     994.  00:9C89                      
+     995.  00:9C89                      	;Variables del replayer... las coloco desde aqui.
+     996.  00:9C89                      	;mirar que hace la directiva MAP del SJASM
+     997.  00:9C89  (F000)              	map		#f000
+     998.  00:9C89                      
+     999.  00:9C89                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;PT3 REPLAYER
+    1000.  00:9C89  (00:F000)           PT3_SETUP:		#1	;set bit0 to 1, if you want to play without looping
+    1001.  00:9C89                      					;bit7 is set each time, when loop point is passed
+    1002.  00:9C89  (00:F001)           PT3_MODADDR:	#2
+    1003.  00:9C89  (00:F003)           PT3_CrPsPtr:		#2
+    1004.  00:9C89  (00:F005)           PT3_SAMPTRS:		#2
+    1005.  00:9C89  (00:F007)           PT3_OrnPtrs:		#2
+    1006.  00:9C89  (00:F009)           PT3_PDSP:		#2
+    1007.  00:9C89  (00:F00B)           PT3_CSP:		#2 
+    1008.  00:9C89  (00:F00D)           PT3_PSP:		#2
+    1009.  00:9C89  (00:F00F)           PT3_PrNote:		#1
+    1010.  00:9C89  (00:F010)           PT3_PrSlide:		#2
+    1011.  00:9C89  (00:F012)           PT3_AdInPtA:		#2
+    1012.  00:9C89  (00:F014)           PT3_AdInPtB:		#2
+    1013.  00:9C89  (00:F016)           PT3_AdInPtC:		#2
+    1014.  00:9C89  (00:F018)           PT3_LPosPtr:		#2
+    1015.  00:9C89  (00:F01A)           PT3_PatsPtr:		#2
+    1016.  00:9C89  (00:F01C)           PT3_Delay:		#1
+    1017.  00:9C89  (00:F01D)           PT3_AddToEn:		#1
+    1018.  00:9C89  (00:F01E)           PT3_Env_Del:		#1
+    1019.  00:9C89  (00:F01F)           PT3_ESldAdd:		#2
+    1020.  00:9C89  (00:F021)           PT3_NTL3:		#2	; AND A / NOP (note table creator)
+    1021.  00:9C89                      
+    1022.  00:9C89  (00:F023)           VARS:			#0
+    1023.  00:9C89                      
+    1024.  00:9C89  (00:F023)           ChanA:			#29			;CHNPRM_Size
+    1025.  00:9C89  (00:F040)           ChanB:			#29			;CHNPRM_Size
+    1026.  00:9C89  (00:F05D)           ChanC:			#29			;CHNPRM_Size
+    1027.  00:9C89                      
+    1028.  00:9C89                      ;GlobalVars
+    1029.  00:9C89  (00:F07A)           DelyCnt:		#1
+    1030.  00:9C89  (00:F07B)           CurESld:		#2
+    1031.  00:9C89  (00:F07D)           CurEDel:		#1
+    1032.  00:9C89  (00:F07E)           Ns_Base_AddToNs:	#0
+    1033.  00:9C89  (00:F07E)           Ns_Base:		#1
+    1034.  00:9C89  (00:F07F)           AddToNs:		#1
+    1035.  00:9C89                      
+    1036.  00:9C89  (00:F080)           NT_:			#192	; Puntero a/tabla de frecuencias
+    1037.  00:9C89                      
+    1038.  00:9C89  (00:F140)           AYREGS:			#0
+    1039.  00:9C89  (00:F140)           VT_:			#14
+    1040.  00:9C89  (00:F14E)           EnvBase:		#2
+    1041.  00:9C89  (00:F150)           VAR0END:		#0
+    1042.  00:9C89                      
+    1043.  00:9C89  (00:F150)           T1_:			#0		
+    1044.  00:9C89  (00:F150)           T_NEW_1:		#0
+    1045.  00:9C89  (00:F150)           T_OLD_1:		#24
+    1046.  00:9C89  (00:F168)           T_OLD_2:		#24
+    1047.  00:9C89  (00:F180)           T_NEW_3:		#0
+    1048.  00:9C89  (00:F180)           T_OLD_3:		#2
+    1049.  00:9C89  (00:F182)           T_OLD_0:		#0
+    1050.  00:9C89  (00:F182)           T_NEW_0:		#24
+    1051.  00:9C89  (00:F19A)           T_NEW_2:		#166
+    1052.  00:9C89                      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;PT3 REPLAYER END
+     463   00:9C89                      SONG:
+     464   00:9C89  (01DE)              	incbin "src/cancion2.pt3"			;musica de ejemplo
+     465   00:9E67                      
+     466   00:9E67                      
+     467   00:9E67                      
+     468   00:9E67                      
+     469   00:9E67                      FINAL:
+     470   00:9E67                      
+     471   00:9E67                      
+     472   00:9E67                      
+     473   00:9E67                      
+     474   00:9E67                      
+     475   00:9E67                      
+     476   00:9E67                      
+     477   00:9E67                      
+     478   00:9E67                      
+     479   00:9E67                      
+     480   00:9E67                      
+
+    LABELS
+-------------------------------------------------
+00:00008200   INICIO
+00:00008221   INICIO.bucle
+00:0000824A   chekear_teclado
+00:00008250   analizar_colisiones
+00:00008259   termina_partida
+00:00008263 X muestra_colision
+00:0000826C   poner_pantalla_inicial
+00:0000826D   incrementar_pantalla
+00:0000828F   cargar_tiles_colores_y_screen1
+00:000082B4   cargar_tiles__colores_screen2
+00:000082CD   cargar_map_screen2
+00:000082EB   cagar_coche_y_enemigos_screen2
+00:0000830A   cargar_screen3
+00:0000832C   cargar_screen4
+00:0000834E   cargar_screen5
+00:00008370   cargar_sprites
+00:000083A1 X salir_menu_principal
+00:000083A2 X inicializar_modo_pantalla
+00:000083B3   screen2x16
+00:000083D2   depack_VRAM
+00:000083FF   literal
+00:00008404   loop
+00:0000840D X getlen
+00:00008413   lus
+00:00008430   lenok
+00:0000843D   mode7
+00:00008443   mode6
+00:00008449   mode5
+00:0000844F   mode4
+00:00008455   mode3
+00:0000845B   mode2
+00:0000846B   offsok
+00:00008476   offsok.loop
+00:00008498   getbit
+00:0000849C   getbitexx
+00:000084A2   Depack_out
+00:000084A4   modes
+00:0000009F   CHGET
+00:0000005F   CHGMOD
+00:0000005C   LDIRVM
+00:000000D5   GTSTCK
+00:000000D8   GTTRIG
+00:00000047   WRTVDP
+00:0000013E X RDVDP
+00:00000062   CHGCLR
+00:0000F3E9   FORCLR
+00:0000F3DB   CLIKSW
+00:0000F3DF X RG0SAV
+00:0000F3E0   RG1SAV
+00:0000F3E1 X RG2SAV
+00:0000F3E2 X RG3SAV
+00:0000F3E3 X RG4SAV
+00:0000F3E4 X RG5SAV
+00:0000F3E5 X RG6SAV
+00:0000F3E6 X RG7SAV
+00:0000F3E7   STATFL
+00:0000000A X MAXDELAY
+00:000084B2   unpack
+00:000084D6   pletter.literal
+00:000084D8   pletter.loop
+00:000084E1 X pletter.getlen
+00:000084E7   pletter.getlen.lus
+00:00008502   pletter.getlen.lenok
+00:0000850F   pletter.mode6
+00:00008515   pletter.mode5
+00:0000851B   pletter.mode4
+00:00008521   pletter.mode3
+00:00008527   pletter.mode2
+00:00008537   pletter.offsok
+00:00008546   pletter.getbit
+00:0000854A   pletter.getbitexx
+00:00008550   pletter.modes
+00:0000855C X teclas_o_p_q_a
+00:00008579   cursores
+00:000085A7 X disparo_presionado_o_no
+00:000085AF   sprites_coche
+00:0000862F   atributos_coche_sprite
+00:00008633   inicializacion_variables_coche_sprite
+00:00008648   actualiza_atributos_de_coche_sprite
+00:00008665   poner_coche_punto_inicial
+00:0000866C X sacar_coche_de_la_pantalla
+00:0000867D   poner_coche_en_posicion_screen3
+00:0000868E   poner_coche_en_posicion_screen4
+00:0000869F   poner_coche_en_posicion_screen5
+00:000086B0   volcar_sprite_coche_atributos_en_VRAM
+00:000086BD   mover_coche_derecha
+00:000086E4   mover_coche_izquierda
+00:0000870A   mover_coche_diagonal_arriba_derecha
+00:0000870B   mover_coche_diagonal_arriba_izquierda
+00:0000870C   mover_coche_diagonal_abajo_derecha
+00:0000870D   mover_coche_diagonal_abajo_izquierda
+00:0000870E   mover_coche_arriba
+00:00008734   mover_coche_abajo
+00:0000875A   para_coche
+00:00008767   dame_el_tile_que_hay_en_x_e_y
+00:00008787   posicion_y
+00:00008788   posicion_x
+00:00008789 X incrementa_y
+00:0000878A X incrementa_x
+00:0000878B X direccion
+00:0000878C X paso
+00:0000878D X velocidad
+00:0000878E   patron
+00:0000878F   color
+00:00008790 X patron_sprite2
+00:00008791 X color_sprite2
+00:00008792   sprites_enemigo
+00:00008892   atributos_enemigo_sprite
+00:00008896   volcar_sprite_enemigo_atributos_en_VRAM
+00:000088A3   inicializacion_variables_enemeigo_sprite
+00:000088C7   actualiza_atributos_de_enemigo_sprite
+00:000088E4   poner_enemigo_punto_inicial
+00:000088EB X poner_a_cero_enmeigo_posicion_x
+00:000088F0   actualiza_posicion_enemigo
+00:0000890D X seleccion_ruta_uno_enemigo
+00:0000891D   seleccion_ruta_dos_enemigo
+00:0000892D X seleccion_ruta_tres_enemigo
+00:0000893D   seleccion_ruta_cuatro_enemigo
+00:0000894D   mover_enemigo_derecha
+00:0000895A   actuliazar_posicion_derecha
+00:00008971 X derecha_andando
+00:0000897C X derecha_no_andando
+00:00008986   mover_enemigo_izquierda
+00:00008993   actualizar_enemigo_a_la_izquierda
+00:000089AB   izquierda_andando
+00:000089B6   izquierda_no_andando
+00:000089C0   mover_enemigo_arriba
+00:000089CD   actualizar_enemigo_arriba
+00:000089E8 X arriba_andando
+00:000089F3 X arriba_no_andando
+00:000089FD   mover_enemigo_abajo
+00:00008A0A   actualizar_enemigo_abajo
+00:00008A22   abajo_andando
+00:00008A2D   abajo_no_andando
+00:00008A37 X incrementar_enemigo_posicion_x
+00:00008A3B X decrementa_enemigo_posicion_x
+00:00008A3F X incrementar_enemigo_posicion_y
+00:00008A43 X decrementa_enemigo_posicion_y
+00:00008A47   enemigo_posicion_y
+00:00008A48   enemigo_posicion_x
+00:00008A49   enemigo_esta_andado_o_no
+00:00008A4A   enemigo_patron
+00:00008A4B   enemigo_color
+00:00008A4C   enemigo_ruta
+00:00008A4D X paso_permitido
+00:00008A4E   contador_retardo
+00:00008A4F X retardo
+00:00008A50   sprites_contedor
+00:00008A90   atributos_contendor_sprite
+00:00008A94   volcar_sprite_contenedor_atributos_en_VRAM
+00:00008AA1   inicializacion_variables_contendor_sprite
+00:00008ABB   actualiza_atributos_de_contenedor_sprite
+00:00008AD8   incrementa_posicion_x_contedor
+00:00008AEC   contendor_abajo_andando
+00:00008AFB   contendor_abajo_no_andando
+00:00008B0B X seleccion_ruta_uno_contenedor
+00:00008B16   seleccion_ruta_dos_contenedor
+00:00008B21   seleccion_ruta_tres_contenedor
+00:00008B2C   seleccion_ruta_cuatro_contenedor
+00:00008B37   contenedor_posicion_y
+00:00008B38   contenedor_posicion_x
+00:00008B39   contenedor_patron
+00:00008B3A   contenedor_color
+00:00008B3B   contendor_andando_o_no
+00:00008B3C   sprites_numeros
+00:00008B5C   atributos_numeros_sprite
+00:00008B60 X inicializacion_variables_numeros_sprite
+00:00008B75 X actualiza_atributos_de_numeros_sprite
+00:00008B92 X volcar_sprite_numeros_atributos_en_VRAM
+00:00008B9F   numeros_posicion_y
+00:00008BA0   numeros_posicion_x
+00:00008BA1   numeros_patron
+00:00008BA2   numeros_color
+00:00008BA3   tiles_screen1
+00:00008F51   color_screen1
+00:00008FE4   map_screen1
+00:0000910C   tiles_screen2
+00:00009194   color_screen2
+00:000091D7   map_screen2
+00:0000926B   map_screen3
+00:000092BB   map_screen4
+00:00009308   map_screen5
+00:0000937C   screen_actual
+00:0000937D   buffer_de_colsiones
+00:00000000   CHNPRM_PsInOr
+00:00000001   CHNPRM_PsInSm
+00:00000002   CHNPRM_CrAmSl
+00:00000003   CHNPRM_CrNsSl
+00:00000004   CHNPRM_CrEnSl
+00:00000005   CHNPRM_TSlCnt
+00:00000006   CHNPRM_CrTnSl
+00:00000008   CHNPRM_TnAcc
+00:0000000A   CHNPRM_COnOff
+00:0000000B   CHNPRM_OnOffD
+00:0000000C   CHNPRM_OffOnD
+00:0000000D   CHNPRM_OrnPtr
+00:0000000F   CHNPRM_SamPtr
+00:00000011   CHNPRM_NNtSkp
+00:00000012   CHNPRM_Note
+00:00000013   CHNPRM_SlToNt
+00:00000014   CHNPRM_Env_En
+00:00000015   CHNPRM_Flags
+00:00000016   CHNPRM_TnSlDl
+00:00000017   CHNPRM_TSlStp
+00:00000019   CHNPRM_TnDelt
+00:0000001B   CHNPRM_NtSkCn
+00:0000001C   CHNPRM_Volume
+00:0000001D X CHNPRM_Size
+00:00000000   AR_TonA
+00:00000002   AR_TonB
+00:00000004   AR_TonC
+00:00000006   AR_Noise
+00:00000007   AR_Mixer
+00:00000008   AR_AmplA
+00:00000009   AR_AmplB
+00:0000000A   AR_AmplC
+00:0000000B   AR_Env
+00:0000000D   AR_EnvTp
+00:0000967D   CHECKLP
+00:0000968E X PT3_MUTE
+00:0000969A   PT3_INIT
+00:000096D9   PT3_INIT.TP_0
+00:000096E5   PT3_INIT.TP_1
+00:000096EC   PT3_INIT.TP_2
+00:0000975A   PT3_INIT.L1
+00:00009767   PT3_INIT.L2
+00:0000976B X PT3_INIT.L3
+00:00009792   PT3_INIT.CORR_1
+00:000097A0   PT3_INIT.CORR_2
+00:000097A7   PT3_INIT.TC_EXIT
+00:000097B2   PT3_INIT.INITV1
+00:000097BA   PT3_INIT.INITV2
+00:000097CE   PT3_INIT.INITV3
+00:000097D2   PD_OrSm
+00:000097DC   PD_SAM
+00:000097DD   PD_SAM_
+00:000097F3   PD_VOL
+00:000097FC   PD_EOff
+00:00009804   PD_SorE
+00:0000980E   PD_ENV
+00:00009813   PD_ORN
+00:00009818   PD_ESAM
+00:00009825   PTDECOD
+00:00009834   PD_LOOP
+00:00009837   PD_LP2
+00:00009864   PD_NOIS
+00:00009869   PD_REL
+00:0000986F   PD_NOTE
+00:00009877   PD_RES
+00:00009889   PD_FIN
+00:00009890   C_PORTM
+00:000098DB   C_PORTM.NOSIG
+00:000098E5   SET_STP
+00:000098F1   C_GLISS
+00:00009904   C_SMPOS
+00:0000990A   C_ORPOS
+00:00009910   C_VIBRT
+00:00009928   C_ENGLS
+00:0000993A   C_DELAY
+00:00009940   SETENV
+00:0000995B   C_NOP
+00:0000995C   SETORN
+00:00009975   SPCCOMS
+00:00009995   CHREGS
+00:000099B8   CHREGS.CH_ORPS
+00:000099C3   CHREGS.CH_NTP
+00:000099C9   CHREGS.CH_NOK
+00:000099E4   CHREGS.CH_SMPS
+00:000099FA   CHREGS.CH_NOAC
+00:00009A41   CHREGS.CH_STPP
+00:00009A56   CHREGS.CH_AMP
+00:00009A68   CHREGS.CH_AMIN
+00:00009A6D   CHREGS.CH_SVAM
+00:00009A70   CHREGS.CH_NOAM
+00:00009A79   CHREGS.CH_APOS
+00:00009A7F   CHREGS.CH_VOL
+00:00009A8A X CHREGS.CH_ENV
+00:00009A91   CHREGS.CH_NOEN
+00:00009AAB   CHREGS.NO_ENAC
+00:00009AB2   CHREGS.NO_ENSL
+00:00009AC0   CHREGS.CH_MIX
+00:00009AC4   CHREGS.CH_EXIT
+00:00009AE3   CHREGS.CH_ONDL
+00:00009AE7   PT3_PLAY
+00:00009B1B   PT3_PLAY.PLNLP
+00:00009B42   PT3_PLAY.PL1A
+00:00009B4D   PT3_PLAY.PL1B
+00:00009B62   PT3_PLAY.PL1C
+00:00009B77   PT3_PLAY.PL1D
+00:00009B7D   PT3_PLAY.PL2
+00:00009BDF   PT3_ROUT
+00:00009BE0   ROUT_A0
+00:00009BEC   ROUT_A0.LOUT
+00:00009C00   NT_DATA
+00:00009C10   T_
+00:00009C10   TCOLD_0
+00:00009C1C   TCNEW_1
+00:00009C1C   TCOLD_1
+00:00009C1E   TCOLD_2
+00:00009C30   TCNEW_3
+00:00009C31   TCOLD_3
+00:00009C3A   TCNEW_0
+00:00009C45   TCNEW_2
+00:00009C50   EMPTYSAMORN
+00:00009C54   T_PACK
+00:0000F000   PT3_SETUP
+00:0000F001   PT3_MODADDR
+00:0000F003   PT3_CrPsPtr
+00:0000F005   PT3_SAMPTRS
+00:0000F007   PT3_OrnPtrs
+00:0000F009   PT3_PDSP
+00:0000F00B   PT3_CSP
+00:0000F00D   PT3_PSP
+00:0000F00F   PT3_PrNote
+00:0000F010   PT3_PrSlide
+00:0000F012   PT3_AdInPtA
+00:0000F014   PT3_AdInPtB
+00:0000F016   PT3_AdInPtC
+00:0000F018   PT3_LPosPtr
+00:0000F01A   PT3_PatsPtr
+00:0000F01C   PT3_Delay
+00:0000F01D   PT3_AddToEn
+00:0000F01E   PT3_Env_Del
+00:0000F01F   PT3_ESldAdd
+00:0000F021   PT3_NTL3
+00:0000F023   VARS
+00:0000F023   ChanA
+00:0000F040   ChanB
+00:0000F05D   ChanC
+00:0000F07A   DelyCnt
+00:0000F07B   CurESld
+00:0000F07D   CurEDel
+00:0000F07E   Ns_Base_AddToNs
+00:0000F07E   Ns_Base
+00:0000F07F   AddToNs
+00:0000F080   NT_
+00:0000F140   AYREGS
+00:0000F140   VT_
+00:0000F14E   EnvBase
+00:0000F150   VAR0END
+00:0000F150   T1_
+00:0000F150   T_NEW_1
+00:0000F150   T_OLD_1
+00:0000F168   T_OLD_2
+00:0000F180   T_NEW_3
+00:0000F180   T_OLD_3
+00:0000F182   T_OLD_0
+00:0000F182   T_NEW_0
+00:0000F19A   T_NEW_2
+00:00009C89   SONG
+00:00009E67   FINAL
+
+
+ Output: src/main.out
+-------------------------------------------------
+
+ Page: 00
+  Org: 00008200  Size: *  Used: 00000000
+
+    No output
+
+ Output: main.bin
+-------------------------------------------------
+
+ Page: 00
+  Org: 00008200  Size: *  Used: 00001C6E
+
+   Address   Length Align   Label
+   00008200    7278         INICIO
