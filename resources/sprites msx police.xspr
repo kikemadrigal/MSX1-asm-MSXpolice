@@ -1,0 +1,66 @@
+<msxdevtools app="spriteSX devtool" version="0.9.4.0">
+  <palette name="Default Palette" group="" version="" author="">
+    <color id="0" red="0" green="0" blue="0" />
+    <color id="1" red="0" green="0" blue="0" />
+    <color id="2" red="2" green="5" blue="2" />
+    <color id="3" red="3" green="6" blue="3" />
+    <color id="4" red="2" green="2" blue="5" />
+    <color id="5" red="3" green="3" blue="7" />
+    <color id="6" red="5" green="2" blue="1" />
+    <color id="7" red="2" green="6" blue="7" />
+    <color id="8" red="6" green="2" blue="2" />
+    <color id="9" red="7" green="3" blue="3" />
+    <color id="10" red="6" green="6" blue="3" />
+    <color id="11" red="6" green="6" blue="4" />
+    <color id="12" red="1" green="4" blue="1" />
+    <color id="13" red="5" green="3" blue="5" />
+    <color id="14" red="6" green="6" blue="6" />
+    <color id="15" red="7" green="7" blue="7" />
+  </palette>
+  <sprites name="msx police" version="" group="" author="" startDate="637165440000000000" lastUpdate="637166304000000000" mode="1" type="2">
+    <description>
+    </description>
+    <item name="Enemigo  frente a ndando" order="5" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,7,11,11,11,11,3,3,2,2,2,2,2,6,0,128,128,224,208,208,208,208,192,192,64,96,32,32,48,0</gfxData>
+    </item>
+    <item name="contenedor llamas 1" order="12" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>128,216,218,219,89,95,127,63,127,127,127,127,127,63,24,24,6,30,92,222,206,206,254,252,254,254,254,254,254,252,24,24</gfxData>
+    </item>
+    <item name="Enemigo mirando atras" order="10" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,7,7,7,7,7,3,3,2,3,1,1,0,0,0,128,128,224,240,208,208,192,192,192,64,96,32,176,144,0</gfxData>
+    </item>
+    <item name="Enemigo  derecha andanoo" order="9" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,3,3,3,3,3,1,1,1,1,2,4,8,0,0,128,128,192,192,192,192,192,128,128,128,128,128,128,128,192</gfxData>
+    </item>
+    <item name="Enemigo mirando izquierd" order="6" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,3,3,3,3,3,1,1,1,1,1,1,1,3,0,128,128,192,192,192,192,192,128,128,128,128,128,128,128,128</gfxData>
+    </item>
+    <item name="coche mirando dercha" order="1" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>62,93,129,128,128,128,128,128,128,128,128,128,128,129,93,62,0,56,196,132,130,209,217,217,217,217,209,130,132,196,56,0</gfxData>
+    </item>
+    <item name="coche mirando arriba" order="0" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>7,8,48,67,71,64,39,63,96,128,192,192,192,128,64,63,224,16,12,194,226,2,228,252,6,1,3,3,3,1,2,252</gfxData>
+    </item>
+    <item name="Enemigo atras andando" order="11" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,7,7,7,7,7,3,3,2,2,4,5,13,1,0,128,128,224,224,208,208,208,192,192,64,64,192,128,0,0</gfxData>
+    </item>
+    <item name="Enemigo mirando derecha" order="8" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,3,3,3,3,3,1,1,1,1,1,1,1,1,0,128,128,192,192,192,192,192,128,128,128,128,128,128,128,192</gfxData>
+    </item>
+    <item name="Enemigo izquierd andando" order="7" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,3,3,3,3,3,1,1,1,1,1,1,1,3,0,128,128,192,192,192,192,192,128,128,128,128,64,32,16,0</gfxData>
+    </item>
+    <item name="contenedor llamas 2" order="13" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,0,0,0,0,0,0,63,127,127,127,127,127,63,24,24,0,0,0,0,0,0,0,252,254,254,254,254,254,252,24,24</gfxData>
+    </item>
+    <item name="Enemigo mirando frente" order="4" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,1,1,7,11,11,11,11,3,3,2,6,12,8,0,0,0,128,128,224,208,208,208,208,192,192,64,64,64,64,64,96</gfxData>
+    </item>
+    <item name="coche mirando abajo" order="2" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>63,64,128,192,192,192,128,96,63,39,64,71,67,48,8,7,252,2,1,3,3,3,1,6,252,228,2,226,194,12,16,224</gfxData>
+    </item>
+    <item name="coche mirando izquierda" order="3" type="2" mode="1" InkColor="15" BGcolor="0">
+      <gfxData>0,28,35,33,65,139,155,155,155,155,139,65,33,35,28,0,124,186,129,1,1,1,1,1,1,1,1,1,1,129,186,124</gfxData>
+    </item>
+  </sprites>
+</msxdevtools>

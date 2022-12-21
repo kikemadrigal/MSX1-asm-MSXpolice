@@ -1,0 +1,61 @@
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2019.11.29 - 18:25:55]
+
+suma.asm
+Errors: 0
+
+       1   00:0000                      		output "suma.bin"
+       2   00:C000                      		
+       3   00:C000                      		
+       4   00:C000  (00:00A2)           CHPUT:	equ	#00A2		; CHPUT es solo una etiqueta que se pone para no estar llamado a la subrutina 0042h
+       5   00:C000                      						; Muestra un carácter
+       6   00:C000                      						; MSX-1 BIOS subrutines
+       7   00:C000                      						; Definiciones de subrutinas creadas para la bios 
+       8   00:C000                      						; http://map.grauw.nl/resources/msxbios.php
+       9   00:C000                      
+      10   00:C000                      	;esto es oblgatorio para definir la cabecera de un archivo BIN
+      11   00:C000  FE                  	db	 0FEh		; ID archivo binario
+      12   00:C001  00 C0               	dw	 INICIO		; dirección de inicio
+      13   00:C003  08 C0               	dw	 FINAL - 1	; dirección final
+      14   00:C005  00 C0               	dw	 MAIN	    ; dircción del programa de ejecución (para cuando pongas r en bload"nombre_programa", r)
+      15   00:C007                      	
+      16   00:C007                      	
+      17   00:C007                       
+      18   00:C007                      	org	0C000h	; org se utiliza para decirle al z80 en que posición de memoria empieza nuestro programa
+      19   00:C000                      			
+      20   00:C000                      INICIO:
+      21   00:C000                       
+      22   00:C000                      
+      23   00:C000                       
+      24   00:C000                      
+      25   00:C000                      MAIN:
+      26   00:C000  3E 03               	ld a,3
+      27   00:C002  02                  	ld (bc),a
+      28   00:C003  C6 04               	add a,4
+      29   00:C005  CD A2 00            	call CHPUT
+      30   00:C008  C9                  	ret
+      31   00:C009                      FINAL:
+
+    LABELS
+-------------------------------------------------
+00:000000A2   CHPUT
+00:0000C000   INICIO
+00:0000C000   MAIN
+00:0000C009   FINAL
+
+
+ Output: suma.out
+-------------------------------------------------
+
+ Page: 00
+  Org: 0000C000  Size: *  Used: 00000000
+
+    No output
+
+ Output: suma.bin
+-------------------------------------------------
+
+ Page: 00
+  Org: 0000C000  Size: *  Used: 00000010
+
+   Address   Length Align   Label
+   0000C000      16         INICIO
