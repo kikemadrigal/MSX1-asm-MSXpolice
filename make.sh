@@ -1,7 +1,15 @@
 #!/bin/bash
-
+#este archivo es un script creado con el lenguaje shell script o bash
+#escribe el valor linux o windows
+so="windows"
 # Compilando el archivo .bin generado por sjasm
-tools/sjasm/sjasm -s src/main.asm
+if [ $so == "windows" ]
+then
+    tools/sjasm/sjasm.exe -s src/main.asm
+elif [ $so == "linux" ]
+then
+    tools/sjasm/sjasm -s src/main.asm
+fi
 
 # Creando una carpeta para mover nuestros archivos
 if [ -d "dsk" ]
@@ -24,7 +32,14 @@ mv main.bin dsk
 cp resources/AUTOEXEC.BAS dsk/
 
 #Abriendo emulador
-start openmsx-script tools/emulators/openmsx/emul_start_config.txt
+if [ $so == "windows" ]
+then
+    start tools/emulators/openmsx/openmsx -script tools/emulators/openmsx/emul_start_config.txt  
+elif [ $so= = "linux" ]
+then
+    openmsx -script tools/emulators/openmsx/emul_start_config.txt 
+fi
+
 
 #Quitando archivos innecesarios
 mv src/main.sym objects 
